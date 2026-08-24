@@ -1,0 +1,1355 @@
+// Remnant Ministry Platform — database schema
+// Design principles:
+//  * UUID primary keys everywhere (no enumerable/sequential identifiers).
+//  * Counselling, safeguarding, moderation and audit data live in their own
+//    logical boundaries and are never reachable through ordinary member APIs.
+//  * Every privileged action is attributable through the audit log.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enumerations
+// ---------------------------------------------------------------------------
+
+enum RoleKey {
+  USER
+  COUNSELLOR
+  PASTOR
+  MINISTRY_LEADER
+  MODERATOR
+  COUNSELLING_ADMIN
+  CONTENT_ADMIN
+  EVENT_ADMIN
+  SAFEGUARDING_ADMIN
+  ANALYTICS_ADMIN
+  ADMIN
+  SENIOR_LEADERSHIP_ADMIN
+  SUPER_ADMIN
+}
+
+enum AccountStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  DISABLED
+  DELETION_REQUESTED
+  DELETED
+}
+
+enum AgeBand {
+  MINOR
+  YOUNG_ADULT
+  ADULT
+  UNDECLARED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  UNSPECIFIED
+}
+
+enum HierarchyStatus {
+  PENDING_APPROVAL
+  ACTIVE
+  SUSPENDED
+  REMOVED
+  ARCHIVED
+}
+
+enum CounsellorStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum AvailabilityState {
+  AVAILABLE
+  BUSY
+  BREAK
+  UNAVAILABLE
+}
+
+enum CounsellingCategory {
+  SPIRITUAL_GROWTH
+  PRAYER_AND_FAITH
+  FAMILY
+  MARRIAGE
+  RELATIONSHIPS
+  PURPOSE_AND_CALLING
+  DISCIPLESHIP
+  PERSONAL_STRUGGLES
+  YOUTH_GUIDANCE
+  MINISTRY
+  BEREAVEMENT
+  LIFE_DECISIONS
+  OTHER
+}
+
+enum Urgency {
+  ROUTINE
+  SOON
+  URGENT
+}
+
+enum CommunicationMethod {
+  TEXT
+  VOICE
+  VIDEO
+  IN_PERSON
+}
+
+enum CounsellingRequestStatus {
+  SUBMITTED
+  TRIAGED
+  MATCHING
+  ASSIGNED
+  ACCEPTED
+  DECLINED
+  SCHEDULED
+  CANCELLED
+  CLOSED
+}
+
+enum SessionStatus {
+  REQUESTED
+  CONFIRMED
+  WAITING
+  COUNSELLOR_JOINED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum SessionNoteKind {
+  INTERNAL
+  SHARED_FOLLOW_UP
+}
+
+enum ConnectionStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  WITHDRAWN
+  BLOCKED
+}
+
+enum ConversationKind {
+  PEER
+  COUNSELLING
+}
+
+enum MessageKind {
+  TEXT
+  SCRIPTURE
+  RESOURCE
+  SYSTEM
+  FILE
+}
+
+enum ReportCategory {
+  HARASSMENT
+  SPAM
+  IMPERSONATION
+  INAPPROPRIATE_BEHAVIOUR
+  MANIPULATION
+  FINANCIAL_SOLICITATION
+  SEXUAL_MISCONDUCT
+  THREATS
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  UNDER_REVIEW
+  ACTION_REQUIRED
+  RESOLVED
+  DISMISSED
+  ESCALATED
+}
+
+enum SafeguardingCategory {
+  ABUSE
+  THREATS
+  EXPLOITATION
+  HARASSMENT
+  SELF_HARM_CONCERN
+  CHILD_SAFETY
+  SEXUAL_MISCONDUCT
+  FINANCIAL_EXPLOITATION
+}
+
+enum SafeguardingStatus {
+  OPEN
+  UNDER_ASSESSMENT
+  ESCALATED
+  ACTION_TAKEN
+  CLOSED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum PrayerVisibility {
+  PUBLIC
+  PRIVATE
+  MINISTRY_TEAM_ONLY
+}
+
+enum PrayerCategory {
+  SPIRITUAL_LIFE
+  FAMILY
+  WORK_OR_SCHOOL
+  HEALTH
+  RELATIONSHIPS
+  MINISTRY
+  THANKSGIVING
+  OTHER
+}
+
+enum ContentStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ResourceType {
+  SERMON
+  BIBLE_STUDY
+  ARTICLE
+  VIDEO
+  AUDIO
+  PDF
+  DEVOTIONAL
+  PRAYER_GUIDE
+  DISCIPLESHIP_MATERIAL
+}
+
+enum Visibility {
+  PUBLIC
+  MEMBERS_ONLY
+  MINISTRY_CENTER
+  LEADERSHIP_ONLY
+}
+
+enum EventMode {
+  PHYSICAL
+  ONLINE
+  HYBRID
+}
+
+enum RegistrationStatus {
+  REGISTERED
+  WAITLISTED
+  CANCELLED
+  ATTENDED
+  NO_SHOW
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  PUSH
+}
+
+enum NotificationCategory {
+  COUNSELLING
+  CONNECTION
+  PRAYER
+  LEARNING
+  EVENT
+  SECURITY
+  ANNOUNCEMENT
+  ADMINISTRATIVE
+  SAFEGUARDING
+}
+
+enum DataRequestKind {
+  EXPORT
+  CORRECTION
+  DELETION
+  CONSENT_WITHDRAWAL
+  SUPPORT
+}
+
+enum DataRequestStatus {
+  RECEIVED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+}
+
+enum AuditOutcome {
+  SUCCESS
+  FAILURE
+  DENIED
+}
+
+enum SecurityEventKind {
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  LOGOUT
+  PASSWORD_CHANGE
+  PASSWORD_RESET_REQUEST
+  MFA_ENABLED
+  MFA_DISABLED
+  MFA_CHALLENGE_FAILURE
+  SESSION_REVOKED
+  RATE_LIMIT_TRIGGERED
+  SUSPICIOUS_LOGIN_LOCATION
+  PERMISSION_DENIED
+  UPLOAD_REJECTED
+  ADMIN_ELEVATION
+}
+
+// ---------------------------------------------------------------------------
+// Identity, roles and permissions
+// ---------------------------------------------------------------------------
+
+model User {
+  id                 String        @id @default(uuid()) @db.Uuid
+  email              String        @unique
+  emailVerifiedAt    DateTime?
+  passwordHash       String
+  passwordChangedAt  DateTime      @default(now())
+  mustChangePassword Boolean       @default(false)
+  mfaEnabled         Boolean       @default(false)
+  mfaSecret          String?
+  mfaRequired        Boolean       @default(false)
+  status             AccountStatus @default(PENDING_VERIFICATION)
+  statusReason       String?
+  failedLoginCount   Int           @default(0)
+  lockedUntil        DateTime?
+  lastLoginAt        DateTime?
+  isDemoAccount      Boolean       @default(false)
+  isSeedPlaceholder  Boolean       @default(false)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  deletedAt          DateTime?
+
+  profile             Profile?
+  roles               UserRole[]
+  permissionOverrides UserPermissionOverride[]
+  sessions            Session[]
+  counsellor          Counsellor?
+  hierarchyNode       ChurchHierarchyNode?     @relation("HierarchyPerson")
+  privacySettings     PrivacySettings?
+  notificationPrefs   NotificationPreference?
+  consents            Consent[]
+  verificationTokens  VerificationToken[]
+
+  counsellingRequests CounsellingRequest[]      @relation("RequesterRequests")
+  sessionParticipants SessionParticipant[]
+  connectionsSent     ConnectionRequest[]       @relation("ConnectionRequester")
+  connectionsReceived ConnectionRequest[]       @relation("ConnectionRecipient")
+  conversationMembers ConversationParticipant[]
+  messagesSent        Message[]                 @relation("MessageSender")
+  blocksCreated       Block[]                   @relation("Blocker")
+  blocksReceived      Block[]                   @relation("Blocked")
+  reportsFiled        Report[]                  @relation("Reporter")
+  reportsAbout        Report[]                  @relation("ReportedUser")
+  prayerRequests      PrayerRequest[]
+  prayerInteractions  PrayerInteraction[]
+  courseProgress      CourseProgress[]
+  eventRegistrations  EventRegistration[]
+  notifications       Notification[]
+  dataRequests        DataRequest[]
+  auditEntries        AuditLog[]                @relation("AuditActor")
+  securityEvents      SecurityEvent[]
+  supportSessions     SupportModeSession[]      @relation("SupportSubject")
+
+  ministryCenterId String?         @db.Uuid
+  ministryCenter   MinistryCenter? @relation("CenterMembers", fields: [ministryCenterId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([ministryCenterId])
+  @@map("users")
+}
+
+model Profile {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @unique @db.Uuid
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName         String
+  lastName          String
+  displayName       String
+  avatarUrl         String?
+  bio               String?
+  country           String?
+  timezone          String    @default("UTC")
+  preferredLanguage String    @default("en")
+  gender            Gender    @default(UNSPECIFIED)
+  dateOfBirth       DateTime?
+  ageBand           AgeBand   @default(UNDECLARED)
+  phone             String?
+  interests         String[]  @default([])
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([displayName])
+  @@map("profiles")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         RoleKey  @unique
+  name        String
+  description String
+  // Higher rank = greater authority. Used for hierarchy guards: an actor may
+  // never modify a principal whose rank is greater than or equal to their own.
+  rank        Int
+  isStaffRole Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  description String
+  // Permissions flagged sensitive require MFA + fresh re-authentication.
+  isSensitive Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  roles     RolePermission[]
+  overrides UserPermissionOverride[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String     @id @default(uuid()) @db.Uuid
+  roleId       String     @db.Uuid
+  permissionId String     @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @db.Uuid
+  roleId       String    @db.Uuid
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedById String?   @db.Uuid
+  assignedAt   DateTime  @default(now())
+  expiresAt    DateTime?
+  reason       String?
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@map("user_roles")
+}
+
+// Explicit per-user grant or denial layered on top of role permissions.
+// A DENY always wins, so least privilege can be enforced individually.
+model UserPermissionOverride {
+  id           String     @id @default(uuid()) @db.Uuid
+  userId       String     @db.Uuid
+  permissionId String     @db.Uuid
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  granted      Boolean
+  reason       String
+  grantedById  String?    @db.Uuid
+  expiresAt    DateTime?
+  createdAt    DateTime   @default(now())
+
+  @@unique([userId, permissionId])
+  @@map("user_permission_overrides")
+}
+
+model Session {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @db.Uuid
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash      String    @unique
+  ipAddress      String?
+  userAgent      String?
+  deviceLabel    String?
+  createdAt      DateTime  @default(now())
+  lastSeenAt     DateTime  @default(now())
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  revokedReason  String?
+  mfaSatisfiedAt DateTime?
+  reauthAt       DateTime?
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose   String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, purpose])
+  @@map("verification_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Church hierarchy, ministry centers, administration
+// ---------------------------------------------------------------------------
+
+model MinistryCenter {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String
+  slug           String   @unique
+  country        String
+  city           String?
+  address        String?
+  contactEmail   String?
+  contactPhone   String?
+  timezone       String   @default("UTC")
+  description    String?
+  isActive       Boolean  @default(true)
+  disabledReason String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  members       User[]                @relation("CenterMembers")
+  hierarchy     ChurchHierarchyNode[]
+  counsellors   Counsellor[]
+  events        Event[]
+  resources     Resource[]
+  courses       Course[]
+  announcements Announcement[]
+
+  @@map("ministry_centers")
+}
+
+model ChurchHierarchyNode {
+  id                      String                @id @default(uuid()) @db.Uuid
+  userId                  String?               @unique @db.Uuid
+  user                    User?                 @relation("HierarchyPerson", fields: [userId], references: [id], onDelete: SetNull)
+  personName              String
+  title                   String
+  ministryRole            String
+  administrativeRole      RoleKey
+  supervisorId            String?               @db.Uuid
+  supervisor              ChurchHierarchyNode?  @relation("Supervision", fields: [supervisorId], references: [id], onDelete: SetNull)
+  reports                 ChurchHierarchyNode[] @relation("Supervision")
+  ministryCenterId        String?               @db.Uuid
+  ministryCenter          MinistryCenter?       @relation(fields: [ministryCenterId], references: [id], onDelete: SetNull)
+  status                  HierarchyStatus       @default(PENDING_APPROVAL)
+  // Seed placeholder records stay flagged until the organisation confirms them.
+  isSeedPlaceholder       Boolean               @default(false)
+  organisationConfirmedAt DateTime?
+  startDate               DateTime              @default(now())
+  endDate                 DateTime?
+  notes                   String?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+
+  approvals HierarchyChange[]
+
+  @@index([supervisorId])
+  @@index([status])
+  @@map("church_hierarchy")
+}
+
+model HierarchyChange {
+  id            String              @id @default(uuid()) @db.Uuid
+  nodeId        String              @db.Uuid
+  node          ChurchHierarchyNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  changeType    String
+  previousValue Json?
+  newValue      Json?
+  reason        String
+  actorId       String              @db.Uuid
+  createdAt     DateTime            @default(now())
+
+  @@index([nodeId])
+  @@map("hierarchy_changes")
+}
+
+// ---------------------------------------------------------------------------
+// Counselling
+// ---------------------------------------------------------------------------
+
+model Counsellor {
+  id                         String                @id @default(uuid()) @db.Uuid
+  userId                     String                @unique @db.Uuid
+  user                       User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ministryRole               String
+  biography                  String
+  categories                 CounsellingCategory[] @default([])
+  languages                  String[]              @default([])
+  experienceYears            Int                   @default(0)
+  qualifications             String?
+  referenceInfo              String?
+  supervisorId               String?               @db.Uuid
+  ministryCenterId           String?               @db.Uuid
+  ministryCenter             MinistryCenter?       @relation(fields: [ministryCenterId], references: [id], onDelete: SetNull)
+  status                     CounsellorStatus      @default(PENDING)
+  statusReason               String?
+  verifiedAt                 DateTime?
+  verifiedById               String?               @db.Uuid
+  availabilityState          AvailabilityState     @default(UNAVAILABLE)
+  sessionTypes               CommunicationMethod[] @default([])
+  acceptsMinors              Boolean               @default(false)
+  maxConcurrentCases         Int                   @default(10)
+  policiesAcceptedAt         DateTime?
+  safeguardingAcknowledgedAt DateTime?
+  createdAt                  DateTime              @default(now())
+  updatedAt                  DateTime              @updatedAt
+
+  availability     CounsellorAvailability[]
+  assignedRequests CounsellingRequest[]
+  sessions         CounsellingSession[]
+
+  @@index([status])
+  @@map("counsellors")
+}
+
+model CounsellorAvailability {
+  id            String            @id @default(uuid()) @db.Uuid
+  counsellorId  String            @db.Uuid
+  counsellor    Counsellor        @relation(fields: [counsellorId], references: [id], onDelete: Cascade)
+  weekday       Int
+  startMinute   Int
+  endMinute     Int
+  state         AvailabilityState @default(AVAILABLE)
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  createdAt     DateTime          @default(now())
+
+  @@index([counsellorId, weekday])
+  @@map("counsellor_availability")
+}
+
+model CounsellingRequest {
+  id                   String                   @id @default(uuid()) @db.Uuid
+  requesterId          String                   @db.Uuid
+  requester            User                     @relation("RequesterRequests", fields: [requesterId], references: [id], onDelete: Cascade)
+  category             CounsellingCategory
+  summary              String
+  details              String?
+  preferredGender      Gender                   @default(UNSPECIFIED)
+  preferredDate        DateTime?
+  preferredTimeLabel   String?
+  urgency              Urgency                  @default(ROUTINE)
+  preferredMethod      CommunicationMethod      @default(TEXT)
+  language             String                   @default("en")
+  ministryCenterId     String?                  @db.Uuid
+  status               CounsellingRequestStatus @default(SUBMITTED)
+  assignedCounsellorId String?                  @db.Uuid
+  assignedCounsellor   Counsellor?              @relation(fields: [assignedCounsellorId], references: [id], onDelete: SetNull)
+  assignedAt           DateTime?
+  assignedById         String?                  @db.Uuid
+  declineReason        String?
+  disclaimerAckAt      DateTime
+  safeguardingFlagged  Boolean                  @default(false)
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+
+  session CounsellingSession?
+
+  @@index([requesterId])
+  @@index([status])
+  @@index([assignedCounsellorId])
+  @@map("counselling_requests")
+}
+
+model CounsellingSession {
+  id                  String              @id @default(uuid()) @db.Uuid
+  requestId           String              @unique @db.Uuid
+  request             CounsellingRequest  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  counsellorId        String              @db.Uuid
+  counsellor          Counsellor          @relation(fields: [counsellorId], references: [id], onDelete: Restrict)
+  scheduledFor        DateTime
+  durationMinutes     Int                 @default(45)
+  method              CommunicationMethod @default(TEXT)
+  status              SessionStatus       @default(CONFIRMED)
+  waitingRoomOpenedAt DateTime?
+  memberJoinedAt      DateTime?
+  counsellorJoinedAt  DateTime?
+  startedAt           DateTime?
+  endedAt             DateTime?
+  cancelledAt         DateTime?
+  cancelReason        String?
+  followUpRequired    Boolean             @default(false)
+  followUpAt          DateTime?
+  // Recording is disabled by default; enabling it requires explicit consent
+  // captured in the consents table plus a retention decision.
+  recordingEnabled    Boolean             @default(false)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  participants SessionParticipant[]
+  notes        SessionNote[]
+  conversation Conversation?
+
+  @@index([counsellorId, scheduledFor])
+  @@index([status])
+  @@map("counselling_sessions")
+}
+
+model SessionParticipant {
+  id        String             @id @default(uuid()) @db.Uuid
+  sessionId String             @db.Uuid
+  session   CounsellingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String             @db.Uuid
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String
+  joinedAt  DateTime?
+  leftAt    DateTime?
+
+  @@unique([sessionId, userId])
+  @@index([userId])
+  @@map("session_participants")
+}
+
+model SessionNote {
+  id               String             @id @default(uuid()) @db.Uuid
+  sessionId        String             @db.Uuid
+  session          CounsellingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  kind             SessionNoteKind    @default(INTERNAL)
+  // Internal notes are stored encrypted at rest via the application envelope
+  // encryption helper; the ciphertext never leaves the counselling boundary.
+  contentCipher    String
+  contentIv        String
+  authorId         String             @db.Uuid
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  lastAccessedAt   DateTime?
+  lastAccessedById String?            @db.Uuid
+  lastModifiedById String?            @db.Uuid
+  retentionUntil   DateTime?
+
+  accesses SessionNoteAccess[]
+
+  @@index([sessionId])
+  @@map("session_notes")
+}
+
+model SessionNoteAccess {
+  id        String      @id @default(uuid()) @db.Uuid
+  noteId    String      @db.Uuid
+  note      SessionNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  actorId   String      @db.Uuid
+  action    String
+  reason    String?
+  ipAddress String?
+  createdAt DateTime    @default(now())
+
+  @@index([noteId])
+  @@map("session_note_access")
+}
+
+// ---------------------------------------------------------------------------
+// Consent-gated connections and messaging
+// ---------------------------------------------------------------------------
+
+model ConnectionRequest {
+  id             String           @id @default(uuid()) @db.Uuid
+  requesterId    String           @db.Uuid
+  requester      User             @relation("ConnectionRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  recipientId    String           @db.Uuid
+  recipient      User             @relation("ConnectionRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  // A single short introduction message is permitted before acceptance.
+  introMessage   String?
+  status         ConnectionStatus @default(PENDING)
+  respondedAt    DateTime?
+  // Enforces the anti-spam cooldown after a decline or withdrawal.
+  cooldownUntil  DateTime?
+  conversationId String?          @db.Uuid
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([requesterId, recipientId])
+  @@index([recipientId, status])
+  @@map("connection_requests")
+}
+
+model Conversation {
+  id            String              @id @default(uuid()) @db.Uuid
+  kind          ConversationKind    @default(PEER)
+  sessionId     String?             @unique @db.Uuid
+  session       CounsellingSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  isActive      Boolean             @default(true)
+  lastMessageAt DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([kind])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String       @id @default(uuid()) @db.Uuid
+  conversationId String       @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String       @db.Uuid
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String       @default("member")
+  joinedAt       DateTime     @default(now())
+  lastReadAt     DateTime?
+  mutedUntil     DateTime?
+  leftAt         DateTime?
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String       @id @default(uuid()) @db.Uuid
+  conversationId String       @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String       @db.Uuid
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  kind           MessageKind  @default(TEXT)
+  body           String
+  attachmentUrl  String?
+  scriptureRef   String?
+  resourceId     String?      @db.Uuid
+  editedAt       DateTime?
+  deletedAt      DateTime?
+  createdAt      DateTime     @default(now())
+
+  reports Report[]
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+model Block {
+  id        String   @id @default(uuid()) @db.Uuid
+  blockerId String   @db.Uuid
+  blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String   @db.Uuid
+  blocked   User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("blocks")
+}
+
+// ---------------------------------------------------------------------------
+// Moderation and safeguarding
+// ---------------------------------------------------------------------------
+
+model Report {
+  id                  String         @id @default(uuid()) @db.Uuid
+  reference           String         @unique
+  reporterId          String         @db.Uuid
+  reporter            User           @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedUserId      String?        @db.Uuid
+  reportedUser        User?          @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: SetNull)
+  messageId           String?        @db.Uuid
+  message             Message?       @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  category            ReportCategory
+  description         String
+  status              ReportStatus   @default(OPEN)
+  assignedModeratorId String?        @db.Uuid
+  resolution          String?
+  resolvedAt          DateTime?
+  resolvedById        String?        @db.Uuid
+  escalatedAt         DateTime?
+  escalatedToId       String?        @db.Uuid
+  supervisingAdminId  String?        @db.Uuid
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  safeguardingCase SafeguardingCase?
+
+  @@index([status])
+  @@index([reportedUserId])
+  @@map("reports")
+}
+
+model SafeguardingCase {
+  id              String               @id @default(uuid()) @db.Uuid
+  reference       String               @unique
+  reportId        String?              @unique @db.Uuid
+  report          Report?              @relation(fields: [reportId], references: [id], onDelete: SetNull)
+  subjectUserId   String?              @db.Uuid
+  raisedById      String               @db.Uuid
+  category        SafeguardingCategory
+  riskLevel       RiskLevel            @default(MEDIUM)
+  status          SafeguardingStatus   @default(OPEN)
+  // Narrative is encrypted at rest; only safeguarding permission holders may
+  // decrypt it and every decryption is recorded below.
+  narrativeCipher String
+  narrativeIv     String
+  involvesMinor   Boolean              @default(false)
+  assignedToId    String?              @db.Uuid
+  escalatedToId   String?              @db.Uuid
+  escalatedAt     DateTime?
+  closedAt        DateTime?
+  closureSummary  String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  accesses SafeguardingAccess[]
+
+  @@index([status])
+  @@map("safeguarding_cases")
+}
+
+model SafeguardingAccess {
+  id        String           @id @default(uuid()) @db.Uuid
+  caseId    String           @db.Uuid
+  case      SafeguardingCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  actorId   String           @db.Uuid
+  action    String
+  reason    String
+  createdAt DateTime         @default(now())
+
+  @@index([caseId])
+  @@map("safeguarding_access")
+}
+
+// ---------------------------------------------------------------------------
+// Prayer
+// ---------------------------------------------------------------------------
+
+model PrayerRequest {
+  id           String           @id @default(uuid()) @db.Uuid
+  authorId     String           @db.Uuid
+  author       User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  title        String
+  body         String
+  category     PrayerCategory   @default(OTHER)
+  visibility   PrayerVisibility @default(PRIVATE)
+  isAnonymous  Boolean          @default(false)
+  prayerCount  Int              @default(0)
+  answeredAt   DateTime?
+  answeredNote String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  deletedAt    DateTime?
+
+  interactions PrayerInteraction[]
+
+  @@index([visibility, createdAt])
+  @@index([authorId])
+  @@map("prayer_requests")
+}
+
+model PrayerInteraction {
+  id        String        @id @default(uuid()) @db.Uuid
+  requestId String        @db.Uuid
+  request   PrayerRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  userId    String        @db.Uuid
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+
+  @@unique([requestId, userId])
+  @@map("prayer_interactions")
+}
+
+// ---------------------------------------------------------------------------
+// Discipleship, resources, events
+// ---------------------------------------------------------------------------
+
+model Course {
+  id                 String          @id @default(uuid()) @db.Uuid
+  slug               String          @unique
+  title              String
+  track              String
+  summary            String
+  description        String
+  thumbnailUrl       String?
+  difficulty         String          @default("Foundational")
+  language           String          @default("en")
+  status             ContentStatus   @default(DRAFT)
+  visibility         Visibility      @default(MEMBERS_ONLY)
+  ministryCenterId   String?         @db.Uuid
+  ministryCenter     MinistryCenter? @relation(fields: [ministryCenterId], references: [id], onDelete: SetNull)
+  authorName         String
+  scriptureRefs      String[]        @default([])
+  tags               String[]        @default([])
+  certificateEnabled Boolean         @default(false)
+  publishedAt        DateTime?
+  createdById        String?         @db.Uuid
+  approvedById       String?         @db.Uuid
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  lessons  Lesson[]
+  progress CourseProgress[]
+
+  @@index([status])
+  @@map("courses")
+}
+
+model Lesson {
+  id               String   @id @default(uuid()) @db.Uuid
+  courseId         String   @db.Uuid
+  course           Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  orderIndex       Int
+  title            String
+  summary          String
+  body             String
+  videoUrl         String?
+  audioUrl         String?
+  pdfUrl           String?
+  scriptureRefs    String[] @default([])
+  quiz             Json?
+  estimatedMinutes Int      @default(15)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  progress LessonProgress[]
+
+  @@unique([courseId, orderIndex])
+  @@map("lessons")
+}
+
+model CourseProgress {
+  id                  String    @id @default(uuid()) @db.Uuid
+  userId              String    @db.Uuid
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId            String    @db.Uuid
+  course              Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  percentComplete     Int       @default(0)
+  startedAt           DateTime  @default(now())
+  completedAt         DateTime?
+  certificateIssuedAt DateTime?
+  lastActivityAt      DateTime  @default(now())
+
+  lessons LessonProgress[]
+
+  @@unique([userId, courseId])
+  @@map("course_progress")
+}
+
+model LessonProgress {
+  id               String         @id @default(uuid()) @db.Uuid
+  courseProgressId String         @db.Uuid
+  courseProgress   CourseProgress @relation(fields: [courseProgressId], references: [id], onDelete: Cascade)
+  lessonId         String         @db.Uuid
+  lesson           Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completedAt      DateTime?
+  quizScore        Int?
+
+  @@unique([courseProgressId, lessonId])
+  @@map("lesson_progress")
+}
+
+model Resource {
+  id               String          @id @default(uuid()) @db.Uuid
+  slug             String          @unique
+  title            String
+  description      String
+  body             String?
+  type             ResourceType
+  topic            String
+  speaker          String?
+  mediaUrl         String?
+  thumbnailUrl     String?
+  durationMinutes  Int?
+  language         String          @default("en")
+  difficulty       String          @default("All levels")
+  scriptureRefs    String[]        @default([])
+  tags             String[]        @default([])
+  status           ContentStatus   @default(DRAFT)
+  visibility       Visibility      @default(PUBLIC)
+  ministryCenterId String?         @db.Uuid
+  ministryCenter   MinistryCenter? @relation(fields: [ministryCenterId], references: [id], onDelete: SetNull)
+  publishedAt      DateTime?
+  createdById      String?         @db.Uuid
+  approvedById     String?         @db.Uuid
+  viewCount        Int             @default(0)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([status, type])
+  @@map("resources")
+}
+
+model Event {
+  id                   String          @id @default(uuid()) @db.Uuid
+  slug                 String          @unique
+  title                String
+  description          String
+  category             String
+  startsAt             DateTime
+  endsAt               DateTime?
+  mode                 EventMode       @default(PHYSICAL)
+  location             String?
+  onlineUrl            String?
+  speaker              String?
+  bannerUrl            String?
+  capacity             Int?
+  registrationDeadline DateTime?
+  status               ContentStatus   @default(DRAFT)
+  visibility           Visibility      @default(PUBLIC)
+  ministryCenterId     String?         @db.Uuid
+  ministryCenter       MinistryCenter? @relation(fields: [ministryCenterId], references: [id], onDelete: SetNull)
+  cancelledAt          DateTime?
+  cancelReason         String?
+  publishedAt          DateTime?
+  createdById          String?         @db.Uuid
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  registrations EventRegistration[]
+
+  @@index([status, startsAt])
+  @@map("events")
+}
+
+model EventRegistration {
+  id           String             @id @default(uuid()) @db.Uuid
+  eventId      String             @db.Uuid
+  event        Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId       String             @db.Uuid
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status       RegistrationStatus @default(REGISTERED)
+  registeredAt DateTime           @default(now())
+  attendedAt   DateTime?
+
+  @@unique([eventId, userId])
+  @@map("event_registrations")
+}
+
+model Announcement {
+  id               String                @id @default(uuid()) @db.Uuid
+  title            String
+  body             String
+  audienceRole     RoleKey?
+  audienceCountry  String?
+  ministryCenterId String?               @db.Uuid
+  ministryCenter   MinistryCenter?       @relation(fields: [ministryCenterId], references: [id], onDelete: SetNull)
+  channels         NotificationChannel[] @default([IN_APP])
+  status           ContentStatus         @default(DRAFT)
+  scheduledFor     DateTime?
+  sentAt           DateTime?
+  createdById      String                @db.Uuid
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@index([status, scheduledFor])
+  @@map("announcements")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications, privacy and consent
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id         String               @id @default(uuid()) @db.Uuid
+  userId     String               @db.Uuid
+  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   NotificationCategory
+  // Titles and bodies must never carry counselling specifics — see the
+  // notification policy in docs/SECURITY.md.
+  title      String
+  body       String
+  link       String?
+  isCritical Boolean              @default(false)
+  readAt     DateTime?
+  createdAt  DateTime             @default(now())
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id                  String   @id @default(uuid()) @db.Uuid
+  userId              String   @unique @db.Uuid
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailEnabled        Boolean  @default(true)
+  pushEnabled         Boolean  @default(true)
+  counsellingEnabled  Boolean  @default(true)
+  connectionEnabled   Boolean  @default(true)
+  prayerEnabled       Boolean  @default(true)
+  learningEnabled     Boolean  @default(true)
+  eventEnabled        Boolean  @default(true)
+  announcementEnabled Boolean  @default(true)
+  updatedAt           DateTime @updatedAt
+
+  @@map("notification_preferences")
+}
+
+model PushToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  token      String    @unique
+  platform   String
+  deviceName String?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+
+  @@index([userId])
+  @@map("push_tokens")
+}
+
+model PrivacySettings {
+  id                      String   @id @default(uuid()) @db.Uuid
+  userId                  String   @unique @db.Uuid
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  discoverable            Boolean  @default(false)
+  whoCanRequestConnection String   @default("MEMBERS")
+  publicProfile           Boolean  @default(false)
+  allowPrayerInteraction  Boolean  @default(true)
+  showOnlineStatus        Boolean  @default(false)
+  allowCounsellorFollowUp Boolean  @default(true)
+  allowCenterDiscovery    Boolean  @default(true)
+  updatedAt               DateTime @updatedAt
+
+  @@map("privacy_settings")
+}
+
+model Consent {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @db.Uuid
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policyKey     String
+  policyVersion String
+  granted       Boolean   @default(true)
+  grantedAt     DateTime  @default(now())
+  withdrawnAt   DateTime?
+  ipAddress     String?
+
+  @@index([userId, policyKey])
+  @@map("consents")
+}
+
+model PolicyVersion {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String
+  version     String
+  title       String
+  body        String
+  effectiveAt DateTime @default(now())
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+
+  @@unique([key, version])
+  @@map("policy_versions")
+}
+
+model DataRequest {
+  id          String            @id @default(uuid()) @db.Uuid
+  userId      String            @db.Uuid
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind        DataRequestKind
+  status      DataRequestStatus @default(RECEIVED)
+  details     String?
+  responseUrl String?
+  handledById String?           @db.Uuid
+  handledAt   DateTime?
+  createdAt   DateTime          @default(now())
+
+  @@index([userId])
+  @@map("data_requests")
+}
+
+// ---------------------------------------------------------------------------
+// Audit, security and platform governance
+// ---------------------------------------------------------------------------
+
+// Append-only. A database trigger (see migration) rejects UPDATE and DELETE so
+// that no administrator, including the Super Admin, can silently erase history.
+model AuditLog {
+  id         String       @id @default(uuid()) @db.Uuid
+  actorId    String?      @db.Uuid
+  actor      User?        @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actorEmail String?
+  actorRole  String?
+  action     String
+  targetType String?
+  targetId   String?
+  reason     String?
+  outcome    AuditOutcome @default(SUCCESS)
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime     @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
+  @@map("audit_logs")
+}
+
+model SecurityEvent {
+  id        String            @id @default(uuid()) @db.Uuid
+  userId    String?           @db.Uuid
+  user      User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  kind      SecurityEventKind
+  severity  String            @default("info")
+  detail    String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime          @default(now())
+
+  @@index([kind, createdAt])
+  @@map("security_events")
+}
+
+model SupportModeSession {
+  id                String    @id @default(uuid()) @db.Uuid
+  operatorId        String    @db.Uuid
+  subjectId         String    @db.Uuid
+  subject           User      @relation("SupportSubject", fields: [subjectId], references: [id], onDelete: Cascade)
+  reason            String
+  startedAt         DateTime  @default(now())
+  expiresAt         DateTime
+  endedAt           DateTime?
+  subjectNotifiedAt DateTime?
+
+  @@index([subjectId])
+  @@map("support_mode_sessions")
+}
+
+model PlatformSetting {
+  key         String   @id
+  value       Json
+  description String?
+  updatedById String?  @db.Uuid
+  updatedAt   DateTime @updatedAt
+
+  @@map("platform_settings")
+}
+
+model RateLimitCounter {
+  id          String   @id @default(uuid()) @db.Uuid
+  bucket      String
+  identity    String
+  count       Int      @default(0)
+  windowStart DateTime @default(now())
+
+  @@unique([bucket, identity])
+  @@map("rate_limit_counters")
+}

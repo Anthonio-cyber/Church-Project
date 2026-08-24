@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "iPastor",
+    "slug": "ipastor",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "ipastor",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#111110"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "org.example.ipastor",
+      "buildNumber": "1",
+      "config": { "usesNonExemptEncryption": false },
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Use Face ID to unlock iPastor without re-entering your password.",
+        "NSCameraUsageDescription": "Used only if you join a video counselling session.",
+        "NSMicrophoneUsageDescription": "Used only if you join a voice or video counselling session."
+      }
+    },
+    "android": {
+      "package": "org.example.ipastor",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#111110"
+      },
+      "permissions": ["USE_BIOMETRIC", "USE_FINGERPRINT", "POST_NOTIFICATIONS"],
+      "blockedPermissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "READ_CONTACTS"]
+    },
+    "web": { "favicon": "./assets/favicon.png", "bundler": "metro" },
+    "plugins": [
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": false,
+          "faceIDPermission": "Use Face ID to unlock iPastor without re-entering your password."
+        }
+      ],
+      ["expo-notifications", { "icon": "./assets/adaptive-icon.png", "color": "#c9922a" }]
+    ],
+    "extra": {
+      "apiUrl": "https://ipastor.example.org",
+      "eas": { "projectId": "00000000-0000-0000-0000-000000000000" }
+    },
+    "privacy": "public"
+  }
+}
