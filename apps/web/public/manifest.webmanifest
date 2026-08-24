@@ -1,0 +1,39 @@
+{
+  "name": "iPastor — Remnant Christian Network",
+  "short_name": "iPastor",
+  "description": "Private pastoral counselling, prayer, discipleship and fellowship.",
+  "id": "/",
+  "start_url": "/app/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#111110",
+  "theme_color": "#c9922a",
+  "categories": ["lifestyle", "education", "social"],
+  "icons": [
+    { "src": "/brand/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Request counselling",
+      "short_name": "Counselling",
+      "url": "/app/counselling/request",
+      "description": "Ask to speak privately with an approved counsellor"
+    },
+    {
+      "name": "Request prayer",
+      "short_name": "Prayer",
+      "url": "/app/prayer",
+      "description": "Share a prayer request"
+    },
+    {
+      "name": "Continue learning",
+      "short_name": "Learn",
+      "url": "/app/discipleship",
+      "description": "Pick up where you left off"
+    }
+  ]
+}

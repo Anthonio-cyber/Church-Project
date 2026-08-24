@@ -1,0 +1,20 @@
+# iPastor
+#
+# The public site is indexable. Every authenticated surface is not — and is
+# additionally protected by noindex headers and by authentication itself, so a
+# crawler that ignores this file still reaches nothing.
+
+User-agent: *
+Allow: /
+Disallow: /app/
+Disallow: /counsellor
+Disallow: /moderation
+Disallow: /admin
+Disallow: /super-admin
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /reset-password
+Disallow: /verify-email
+
+Sitemap: /sitemap.xml

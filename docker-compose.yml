@@ -1,0 +1,54 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# 𝒾Pastor — the whole platform, one database.
+#
+#   docker compose up --build
+#
+# Then open http://localhost:3000
+#
+# Set SEED_ON_START=true once to load demonstration data.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  database:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ipastor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-in-production}
+      POSTGRES_DB: ${POSTGRES_DB:-ipastor}
+    volumes:
+      - database:/var/lib/postgresql/data
+    # Not published to the host by default: the application reaches it over the
+    # internal network, and nothing else needs to.
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-ipastor} -d ${POSTGRES_DB:-ipastor}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ipastor}:${POSTGRES_PASSWORD:-change-me-in-production}@database:5432/${POSTGRES_DB:-ipastor}?schema=public
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET — generate with: openssl rand -base64 48}
+      DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?set DATA_ENCRYPTION_KEY — generate with: openssl rand -base64 48}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      NEXT_PUBLIC_BRAND_NAME: ${NEXT_PUBLIC_BRAND_NAME:-iPastor}
+      EMAIL_API_KEY: ${EMAIL_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      PUSH_NOTIFICATION_KEY: ${PUSH_NOTIFICATION_KEY:-}
+      VIDEO_SERVICE_KEY: ${VIDEO_SERVICE_KEY:-}
+      STORAGE_KEY: ${STORAGE_KEY:-}
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-}
+      SEED_ON_START: ${SEED_ON_START:-false}
+    ports:
+      - '${PORT:-3000}:3000'
+
+volumes:
+  database:

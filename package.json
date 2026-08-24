@@ -1,0 +1,22 @@
+{
+  "name": "remnant-ministry-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Private Christian pastoral counselling, discipleship, fellowship and church administration platform.",
+  "workspaces": ["apps/web", "apps/mobile"],
+  "engines": { "node": ">=20.0.0" },
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspace=apps/web",
+    "start": "npm run start --workspace=apps/web",
+    "lint": "npm run lint --workspace=apps/web",
+    "typecheck": "npm run typecheck --workspace=apps/web",
+    "test": "npm run test --workspace=apps/web",
+    "db:generate": "npm run db:generate --workspace=apps/web",
+    "db:migrate": "npm run db:migrate --workspace=apps/web",
+    "db:deploy": "npm run db:deploy --workspace=apps/web",
+    "db:seed": "npm run db:seed --workspace=apps/web",
+    "db:reset": "npm run db:reset --workspace=apps/web",
+    "mobile": "npm run start --workspace=apps/mobile"
+  }
+}
