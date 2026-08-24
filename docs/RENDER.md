@@ -1,4 +1,4 @@
-# Deploying 𝒾Pastor to Render at ipastor.org
+# Deploying 𝒾Pastor to Render at ipastor.church
 
 A step-by-step walkthrough. Allow about 40 minutes, most of it waiting for the
 first build and for DNS.
@@ -9,9 +9,14 @@ first build and for DNS.
 
 You need three things:
 
-1. **The domain `ipastor.org`**, registered and with access to its DNS settings.
-   At the time of writing it already resolves, so confirm you own it — or
-   register an alternative and substitute it everywhere below.
+1. **The domain `ipastor.church`**, registered and with access to its DNS
+   settings. It was unregistered when this was written — register it before you
+   start, at Namecheap, Porkbun, Cloudflare Registrar or any registrar that
+   sells `.church` (roughly £25–35 a year; it is a sponsored TLD, so it costs
+   more than `.org`).
+
+   If you end up on a different domain, substitute it everywhere below and in
+   `render.yaml`, `.env.example` and `apps/mobile/eas.json`.
 2. **A Render account** — <https://render.com>, free to create. Sign in with
    GitHub so it can see the repository.
 3. **PR #1 merged to `main`**, or change `branch:` in `render.yaml` to
@@ -71,13 +76,13 @@ If `status` is `degraded`, the database is not reachable — check the
 
 ---
 
-## Step 3 — Point ipastor.org at it
+## Step 3 — Point ipastor.church at it
 
 **In Render:** service → **Settings** → **Custom Domains** → **Add Custom
 Domain**. Add both:
 
-- `ipastor.org`
-- `www.ipastor.org`
+- `ipastor.church`
+- `www.ipastor.church`
 
 Render then shows the DNS records it wants. They look like this:
 
@@ -92,9 +97,9 @@ Render then shows the DNS records it wants. They look like this:
 each record.
 
 The one mistake almost everyone makes: in the **Host** or **Name** field, enter
-only `@` or `www` — *not* `ipastor.org` or `www.ipastor.org`. The registrar
+only `@` or `www` — *not* `ipastor.church` or `www.ipastor.church`. The registrar
 appends your domain automatically, so typing the full name gives you
-`www.ipastor.org.ipastor.org`.
+`www.ipastor.church.ipastor.church`.
 
 If your registrar does not support `A` records at the apex, use Cloudflare DNS
 (free) which supports `CNAME` flattening, or point the apex at `www` with a
@@ -110,7 +115,7 @@ green tick per domain once it verifies and issues the TLS certificate.
 Once the domain is live: **Environment** → confirm
 
 ```
-NEXT_PUBLIC_APP_URL = https://ipastor.org
+NEXT_PUBLIC_APP_URL = https://ipastor.church
 ```
 
 `render.yaml` already sets this, but check it matches exactly — no trailing
@@ -135,7 +140,7 @@ Or run it once from **Shell**:
 cd /app/apps/web && npx tsx prisma/seed.ts
 ```
 
-Sign in at `https://ipastor.org/login` with `setman@example.org` /
+Sign in at `https://ipastor.church/login` with `setman@example.org` /
 `AdminDemo2024!Ministry`.
 
 **Before real members use the platform, remove every demo account.**
@@ -148,11 +153,11 @@ Nothing else can complete account verification, so do this before launch.
 
 1. Create a [Resend](https://resend.com) account (or any provider — the adapter
    is provider-agnostic).
-2. Verify `ipastor.org` as a sending domain. The provider gives you SPF, DKIM
+2. Verify `ipastor.church` as a sending domain. The provider gives you SPF, DKIM
    and DMARC records — **TXT records**, added at your registrar exactly like
    Step 3.
 3. In Render: **Environment** → set `EMAIL_API_KEY`, and confirm
-   `EMAIL_FROM = iPastor <no-reply@ipastor.org>`.
+   `EMAIL_FROM = iPastor <no-reply@ipastor.church>`.
 4. Register a test account and confirm the email arrives.
 
 ---
@@ -184,7 +189,7 @@ backups as configured.
 
 ## Step 9 — The mobile apps
 
-`apps/mobile` is already pointed at `https://ipastor.org`. When you are ready:
+`apps/mobile` is already pointed at `https://ipastor.church`. When you are ready:
 
 ```bash
 cd apps/mobile

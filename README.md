@@ -219,7 +219,7 @@ The short version, for any host:
 
 | Document | For |
 |---|---|
-| [docs/RENDER.md](docs/RENDER.md) | **Step-by-step deployment to Render at ipastor.org** |
+| [docs/RENDER.md](docs/RENDER.md) | **Step-by-step deployment to Render at ipastor.church** |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Choosing a host, domains, backups, going live |
 | [docs/SECURITY.md](docs/SECURITY.md) | The security model in full |
 | [docs/SUPER-ADMIN.md](docs/SUPER-ADMIN.md) | The Setman: hierarchy, appointments, emergency controls |

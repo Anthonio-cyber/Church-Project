@@ -8,11 +8,11 @@
     },
     "preview": {
       "distribution": "internal",
-      "env": { "EXPO_PUBLIC_API_URL": "https://staging.ipastor.org" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://staging.ipastor.church" }
     },
     "production": {
       "autoIncrement": true,
-      "env": { "EXPO_PUBLIC_API_URL": "https://ipastor.org" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://ipastor.church" }
     }
   },
   "submit": {
