@@ -5,6 +5,30 @@ Anywhere that can run a Node process and reach Postgres can host it.
 
 ---
 
+## Choosing a host
+
+The platform needs a **running server process and a PostgreSQL database**. That
+rules out static hosts — GitHub Pages, Netlify's static tier, S3 — because every
+security guarantee here is enforced server-side.
+
+| Host | Database | Good for | Trade-off |
+|---|---|---|---|
+| **Render** | Managed Postgres, one click | **Most deployments.** One blueprint creates everything | ~$13/month; free tier cold-starts |
+| Railway | Add a Postgres service | Quick experiments | Usage-based billing is harder to predict |
+| Fly.io | `fly postgres create` | Multi-region, low latency | More command-line work |
+| Vercel | External Postgres required | Teams already on Vercel | Serverless weakens the realtime layer |
+| Your own VPS | You install it | Full control, data residency | You own patching, backups and TLS |
+
+**Pick Render unless you have a specific reason not to.** It is the only option
+where one file creates both the application and its database, already wired
+together, with migrations applied on deploy.
+
+If the organisation has a data-residency requirement — counselling records must
+stay in a particular country — check the host's regions before committing.
+Render's `region:` is set to `frankfurt` in `render.yaml`; change it if needed.
+
+---
+
 ## What you need
 
 | Requirement | Notes |
@@ -56,14 +80,14 @@ front of port 3000.
 
 ---
 
-## Option 2 — Render
+## Option 2 — Render (recommended)
 
-1. Push the repository to GitHub.
-2. In Render: **New → Blueprint**, point it at the repository.
-3. Render reads `render.yaml`, creates the web service and a managed Postgres,
-   and wires `DATABASE_URL` automatically.
-4. Set `NEXT_PUBLIC_APP_URL` to your domain once assigned.
-5. Add your custom domain under **Settings → Custom Domains**.
+**[docs/RENDER.md](RENDER.md) is a full step-by-step walkthrough**, including
+DNS, email and first-run setup.
+
+The short version: **New → Blueprint**, point it at the repository, and Render
+reads `render.yaml` to create the web service and a managed Postgres with
+`DATABASE_URL` wired between them.
 
 `AUTH_SECRET` and `DATA_ENCRYPTION_KEY` are generated on first deploy — copy the
 encryption key somewhere safe immediately.

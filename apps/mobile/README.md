@@ -59,8 +59,8 @@ npx eas build --platform ios --profile production
 Before submitting:
 
 1. Set a real `projectId` in `app.json` under `extra.eas`.
-2. Change `ios.bundleIdentifier` and `android.package` from `org.example.ipastor`
-   to the organisation's own identifiers.
+2. Confirm `ios.bundleIdentifier` and `android.package` (`org.ipastor.app`)
+   match the identifiers registered in App Store Connect and Play Console.
 3. Set the production `EXPO_PUBLIC_API_URL` in `eas.json` to the deployed domain.
 4. Replace `assets/icon.png`, `assets/adaptive-icon.png` and `assets/splash.png`
    if the organisation supplies authorised official artwork.
@@ -86,9 +86,9 @@ Internal counselling notes are encrypted, and every access to them is recorded.
 iPastor is not an emergency service and is not a substitute for emergency,
 medical, psychological, psychiatric or legal care.
 
-**Privacy policy URL.** `https://<your-domain>/privacy`
-**Support URL.** `https://<your-domain>/contact`
-**Account deletion URL.** `https://<your-domain>/data-rights`
+**Privacy policy URL.** `https://ipastor.org/privacy`
+**Support URL.** `https://ipastor.org/contact`
+**Account deletion URL.** `https://ipastor.org/data-rights`
 
 **Age rating.** 12+ / PEGI 12 — the platform supports accounts for people under
 18 with age-aware restrictions applied automatically.

@@ -199,9 +199,11 @@ routes use — not mocks of them.
 
 ## Deploying
 
-See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for the full walkthrough.
-Configurations are included for Docker, Render (`render.yaml`), Railway
-(`railway.json`), Fly.io (`fly.toml`) and Vercel (`vercel.json`).
+**Render is the recommended host** — see **[docs/RENDER.md](docs/RENDER.md)**
+for a step-by-step walkthrough including DNS, email and first-run setup.
+Configurations are also included for Docker, Railway (`railway.json`), Fly.io
+(`fly.toml`) and Vercel (`vercel.json`); see
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for how to choose between them.
 
 The short version, for any host:
 
@@ -217,7 +219,8 @@ The short version, for any host:
 
 | Document | For |
 |---|---|
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Hosting, domains, backups, going live |
+| [docs/RENDER.md](docs/RENDER.md) | **Step-by-step deployment to Render at ipastor.org** |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Choosing a host, domains, backups, going live |
 | [docs/SECURITY.md](docs/SECURITY.md) | The security model in full |
 | [docs/SUPER-ADMIN.md](docs/SUPER-ADMIN.md) | The Setman: hierarchy, appointments, emergency controls |
 | [docs/ADMIN.md](docs/ADMIN.md) | Administrators: members, counsellors, content, events |

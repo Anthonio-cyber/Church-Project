@@ -5,9 +5,9 @@
 #   fly postgres attach ipastor-db          # sets DATABASE_URL
 #   fly secrets set AUTH_SECRET="$(openssl rand -base64 48)"
 #   fly secrets set DATA_ENCRYPTION_KEY="$(openssl rand -base64 48)"
-#   fly secrets set NEXT_PUBLIC_APP_URL="https://your-domain.example.org"
+#   fly secrets set NEXT_PUBLIC_APP_URL="https://ipastor.org"
 #   fly deploy
-#   fly certs add your-domain.example.org
+#   fly certs add ipastor.org
 
 app = "ipastor"
 primary_region = "lhr"
