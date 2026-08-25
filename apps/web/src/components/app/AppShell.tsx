@@ -29,6 +29,7 @@ const MEMBER_NAV: NavItem[] = [
 
 const ACCOUNT_NAV: NavItem[] = [
   { href: '/app/profile', label: 'My Profile', icon: '☺' },
+  { href: '/app/counsellor-application', label: 'Serve as a Counsellor', icon: '🕊' },
   { href: '/app/privacy', label: 'Privacy & Security', icon: '🔒' },
   { href: '/app/help', label: 'Help & Support', icon: '?' },
 ];
