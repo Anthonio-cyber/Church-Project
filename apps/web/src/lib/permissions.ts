@@ -136,7 +136,7 @@ export const ROLE_LABEL: Record<RoleKey, string> = {
   SAFEGUARDING_ADMIN: 'Safeguarding Administrator',
   ADMIN: 'Administrator',
   SENIOR_LEADERSHIP_ADMIN: 'Senior Leadership Administrator',
-  SUPER_ADMIN: 'Super Admin (Setman)',
+  SUPER_ADMIN: 'Super Admin',
 };
 
 export const ROLE_DESCRIPTION: Record<RoleKey, string> = {

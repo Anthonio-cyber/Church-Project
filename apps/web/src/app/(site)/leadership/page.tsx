@@ -108,7 +108,7 @@ export default async function LeadershipPage() {
         <div className="rounded-xl border border-ink-200 bg-parchment-100 p-6 dark:border-ink-800 dark:bg-ink-900">
           <ol className="space-y-4 text-sm leading-relaxed text-ink-700 dark:text-parchment-200">
             <li>
-              <strong className="text-gold-800 dark:text-gold-300">Super Admin (Setman)</strong> —
+              <strong className="text-gold-800 dark:text-gold-300">Super Admin</strong> —
               highest platform authority: hierarchy, appointments, permissions, emergency controls
               and data governance. Subject in full to audit logging, multi-factor authentication and
               re-authentication, and unable to erase the audit log.
@@ -118,7 +118,7 @@ export default async function LeadershipPage() {
                 Senior Leadership Administrator
               </strong>{' '}
               — oversight of ministry operations, counsellor operations, content, events and
-              administrative activity, as assigned by the Setman.
+              administrative activity, as assigned by the Super Admin.
             </li>
             <li>
               <strong className="text-gold-800 dark:text-gold-300">Administrator</strong> — day-to-day

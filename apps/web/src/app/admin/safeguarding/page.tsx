@@ -74,7 +74,7 @@ export default async function AdminSafeguardingPage({
           <strong className="font-semibold">This is the most sensitive area of the platform.</strong>{' '}
           Case narratives are encrypted at rest. Opening one requires a written reason and creates a
           permanent access record that cannot be edited or deleted — by you, by an administrator, or
-          by the Setman. Open a case because your role requires it, not because you can.
+          by the Super Admin. Open a case because your role requires it, not because you can.
         </p>
       </Card>
 
