@@ -56,7 +56,13 @@ export type IntegrationName =
 export function integrationStatus(name: IntegrationName): 'configured' | 'not_configured' {
   const map: Record<IntegrationName, string | undefined> = {
     email: env.emailApiKey,
-    push: env.pushKey,
+    // Either transport counts: Web Push needs only a VAPID key pair, which
+    // costs nothing and needs no third party, and reaches installed browsers
+    // without any mobile app existing.
+    push:
+      process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY
+        ? 'web'
+        : env.pushKey,
     realtime: env.realtimeSecret,
     // The service URL, not the key, is what actually makes calls work: a
     // public Jitsi instance needs no key at all. Reporting on the key would

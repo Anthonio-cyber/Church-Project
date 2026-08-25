@@ -27,7 +27,8 @@ const csp = [
   "connect-src 'self' https: wss:",
   // frame-src would otherwise fall back to default-src 'self' and block the
   // counselling call embed.
-  `frame-src 'self'${videoOrigin ? ` ${videoOrigin}` : ''}`,
+  // youtube-nocookie.com carries linked teaching video; see lib/domain/media.ts.
+  `frame-src 'self' https://www.youtube-nocookie.com${videoOrigin ? ` ${videoOrigin}` : ''}`,
   "frame-ancestors 'none'",
   "form-action 'self'",
   "base-uri 'self'",

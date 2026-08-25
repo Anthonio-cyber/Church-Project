@@ -1209,10 +1209,22 @@ model NotificationPreference {
 }
 
 model PushToken {
-  id         String    @id @default(uuid()) @db.Uuid
-  userId     String    @db.Uuid
-  token      String    @unique
-  platform   String
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+
+  /// For a mobile device this is the Expo push token. For a browser it is the
+  /// subscription endpoint URL, which is long — hence no length assumption.
+  token String @unique
+
+  /// "web" for a browser subscription, otherwise the mobile platform.
+  platform String
+
+  /// Web Push only: the browser's public key and auth secret, which the
+  /// payload is encrypted to. Without both, a browser subscription cannot be
+  /// sent to, so a row missing them is skipped rather than half-attempted.
+  p256dh String?
+  auth   String?
+
   deviceName String?
   createdAt  DateTime  @default(now())
   lastUsedAt DateTime?

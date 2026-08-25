@@ -31,10 +31,19 @@ export const POST = route(async (request: Request, { params }: Params) => {
     throw new ApiError(400, 'invalid_lesson', 'That lesson is not part of this course.');
   }
 
-  const progress = await prisma.courseProgress.upsert({
+  // Enrolment must already exist. Upserting here would have quietly enrolled
+  // anyone who posted a lesson id, which is the whole gate.
+  const existing = await prisma.courseProgress.findUnique({
     where: { userId_courseId: { userId: context.user.id, courseId: course.id } },
-    create: { userId: context.user.id, courseId: course.id },
-    update: { lastActivityAt: new Date() },
+    select: { id: true, certificateIssuedAt: true },
+  });
+  if (!existing) {
+    throw new ApiError(409, 'not_enrolled', 'Enrol on this course before recording progress.');
+  }
+
+  const progress = await prisma.courseProgress.update({
+    where: { id: existing.id },
+    data: { lastActivityAt: new Date() },
   });
 
   await prisma.lessonProgress.upsert({
