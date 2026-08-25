@@ -141,26 +141,33 @@ confirm the Neon connection string was pasted in full, including
 
 ---
 
-## Step 4 — Load the demo accounts
+## Step 4 — Create the Super Admin account
+
+The seed script creates no fictional people or content — only the permission
+catalogue, the roles, and one real Super Admin account so someone can sign in.
 
 **Environment** → add `SEED_ON_START` = `true` → save → wait for the redeploy
 → then **set it back to `false`**. Leaving it on re-runs the seed script on
-every future deploy, which fails the second time since the accounts already
-exist.
+every future deploy, which fails the second time since the account already
+exists.
 
-Sign in at `<your URL>/login` with:
+By default this creates:
 
 | Role | Email | Password |
 |---|---|---|
-| Member | `member@example.org` | `DemoPassword2024!Ministry` |
-| Admin | `admin@example.org` | `AdminDemo2024!Ministry` |
-| Setman (Super Admin) | `setman@example.org` | `AdminDemo2024!Ministry` |
+| Super Admin | `tony@rcnglobal.com` | `Tony1234` |
 
-The full list of seeded accounts (counsellors, moderator, safeguarding lead,
-senior leadership) is in the main `README.md`.
+Override it by setting `SEED_SUPER_ADMIN_EMAIL` and
+`SEED_SUPER_ADMIN_PASSWORD` in **Environment** before the seed runs.
 
-**Before this ever becomes the real platform for real members, remove every
-demo account** — see Step 7 of `docs/RENDER.md`.
+Sign in at `<your URL>/login`, then **immediately**:
+
+1. **Privacy & Security → change the password** — this one's deliberately
+   temporary.
+2. **Privacy & Security → Multi-factor authentication → set up.** Every
+   sensitive action is blocked until you do.
+3. **Super Admin → Church Hierarchy** and **Administrators** — build the real
+   structure; nothing is pre-populated.
 
 ---
 

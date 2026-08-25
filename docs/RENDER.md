@@ -127,9 +127,11 @@ Changing it triggers a redeploy.
 
 ---
 
-## Step 5 — Load demonstration data (optional)
+## Step 5 — Create the Super Admin account
 
-To explore the platform with the demo accounts:
+The seed script creates no fictional people or content — only the permission
+catalogue, the roles, and one real Super Admin account so someone can sign in
+and set everything else up from inside the platform.
 
 **Environment** → add `SEED_ON_START` = `true` → save → wait for the redeploy →
 then **set it back to `false`**. Leaving it on re-runs the seed on every deploy.
@@ -140,10 +142,11 @@ Or run it once from **Shell**:
 cd /app/apps/web && npx tsx prisma/seed.ts
 ```
 
-Sign in at `https://ipastor.church/login` with `setman@example.org` /
-`AdminDemo2024!Ministry`.
-
-**Before real members use the platform, remove every demo account.**
+By default this creates `tony@rcnglobal.com` / `Tony1234` — override before
+deploying by setting `SEED_SUPER_ADMIN_EMAIL` and `SEED_SUPER_ADMIN_PASSWORD`
+in **Environment**. Either way, sign in at `https://ipastor.church/login` and
+**immediately** change the password and enrol multi-factor authentication —
+see Step 7.
 
 ---
 
@@ -164,15 +167,17 @@ Nothing else can complete account verification, so do this before launch.
 
 ## Step 7 — First-run setup
 
-1. Sign in as the Setman.
-2. **Privacy & Security → Multi-factor authentication → Set up.** Until you do,
+1. Sign in as the seeded Super Admin (Step 5).
+2. **Privacy & Security → change the password** — the seeded one is
+   deliberately temporary.
+3. **Privacy & Security → Multi-factor authentication → Set up.** Until you do,
    every sensitive action is blocked — hierarchy changes, appointments,
    emergency controls. That is deliberate.
-3. **Super Admin → Church Hierarchy.** The Setman, Rev. Tony and
-   Pst. Gabriel Adayi records are seeded as *provisional* and are not published
-   publicly. Confirm each with the organisation, or remove and replace them.
-4. **Super Admin → Administrators.** Appoint the real administrators.
-5. **Admin → Users.** Remove the demo accounts.
+4. **Super Admin → Church Hierarchy.** Add the real leadership structure —
+   nothing is pre-populated.
+5. **Super Admin → Administrators.** Appoint the real administrators, then
+   decide whether the seeded account stays as a real person's login or gets
+   removed now that it's done its job.
 
 ---
 

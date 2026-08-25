@@ -12,7 +12,7 @@ npx prisma migrate deploy
 cd /app
 
 if [ "${SEED_ON_START}" = "true" ]; then
-  echo "iPastor: seeding demonstration data…"
+  echo "iPastor: running the bootstrap seed…"
   cd /app/apps/web && npx tsx prisma/seed.ts && cd /app
 fi
 

@@ -54,38 +54,35 @@ docker compose up --build
 
 ---
 
-## Demo accounts
+## First sign-in
 
-Loaded by `npm run db:seed`. Every one is fictional and flagged as a demo
-account throughout the interface.
+`npm run db:seed` creates no fictional people, churches or content — only the
+permission catalogue, the roles built from it, and one real Super Admin
+account so someone can sign in and take it from there:
 
 | Role | Email | Password |
 |---|---|---|
-| Super Admin (Setman) | `setman@example.org` | `AdminDemo2024!Ministry` |
-| Senior Leadership Admin | `rev.tony@example.org` | `AdminDemo2024!Ministry` |
-| Administrator | `pst.gabriel@example.org` | `AdminDemo2024!Ministry` |
-| Administrator | `admin@example.org` | `AdminDemo2024!Ministry` |
-| Counselling Admin | `counselling.admin@example.org` | `AdminDemo2024!Ministry` |
-| Safeguarding Lead | `safeguarding@example.org` | `AdminDemo2024!Ministry` |
-| Moderator | `moderator@example.org` | `AdminDemo2024!Ministry` |
-| Content / Event Admin | `content.admin@example.org` | `AdminDemo2024!Ministry` |
-| Counsellor | `pastor.daniel@example.org` | `DemoPassword2024!Ministry` |
-| Counsellor | `minister.grace@example.org` | `DemoPassword2024!Ministry` |
-| Counsellor | `brother.samuel@example.org` | `DemoPassword2024!Ministry` |
-| Counsellor (approved for minors) | `sister.ruth@example.org` | `DemoPassword2024!Ministry` |
-| Member | `member@example.org` | `DemoPassword2024!Ministry` |
-| Member | `member2@example.org` | `DemoPassword2024!Ministry` |
-| Member | `member3@example.org` | `DemoPassword2024!Ministry` |
-| Ministry Leader | `ministry.leader@example.org` | `DemoPassword2024!Ministry` |
+| Super Admin | `tony@rcnglobal.com` | `Tony1234` |
 
-Override with `SEED_DEMO_PASSWORD` and `SEED_ADMIN_PASSWORD`.
-**Change or remove these accounts before a real launch.**
+This is a **temporary** password, meant to be changed within minutes of first
+sign-in, not left in place. Override the account created by the seed with
+`SEED_SUPER_ADMIN_EMAIL` and `SEED_SUPER_ADMIN_PASSWORD`.
 
-**Expected behaviour on first sign-in:** staff accounts are seeded with
+**Expected behaviour on first sign-in:** the account is seeded with
 multi-factor authentication *required but not yet enrolled* — the state a newly
-appointed administrator is genuinely in. They can sign in and browse; every
-sensitive action stays blocked until they enrol from **Privacy & Security**.
-That is the platform working correctly, not a defect. Enrol with any TOTP app.
+appointed administrator is genuinely in. It can sign in and browse; every
+sensitive action stays blocked until it enrols from **Privacy & Security**.
+That is the platform working correctly, not a defect.
+
+**Do this immediately after the first sign-in, in order:**
+
+1. **Privacy & Security → change the password.**
+2. **Privacy & Security → Multi-factor authentication → set up**, with any
+   TOTP app.
+3. **Super Admin → Church Hierarchy** — add the real leadership structure.
+4. **Super Admin → Administrators** — appoint the real administrators, then
+   consider removing or demoting this seed account if it was only meant to
+   be a bootstrap step rather than someone's real login.
 
 The **Setman**, **Rev. Tony** and **Pst. Gabriel Adayi** hierarchy records are
 seeded as **provisional**: pending approval, flagged as placeholders, and
