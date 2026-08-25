@@ -152,7 +152,19 @@ export const profileUpdateSchema = z.object({
   timezone: z.string().trim().max(60).optional(),
   preferredLanguage: z.string().trim().min(2).max(10).optional(),
   interests: z.array(z.string().trim().max(40)).max(12).optional(),
-  avatarUrl: z.string().url().max(500).optional().or(z.literal('')),
+  // Only a file this platform is hosting, never an arbitrary external URL.
+  // An off-site avatar would make every member who merely loads the
+  // connections list or the counsellor directory fetch a third-party image,
+  // handing that third party their IP address and a view count — a tracking
+  // pixel wearing a profile picture. Uploads go through /api/files/avatar.
+  avatarUrl: z
+    .string()
+    .regex(
+      /^\/api\/files\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      'A profile picture must be uploaded rather than linked.',
+    )
+    .optional()
+    .or(z.literal('')),
 });
 
 export const privacySettingsSchema = z.object({

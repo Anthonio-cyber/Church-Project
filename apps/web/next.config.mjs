@@ -87,6 +87,20 @@ const nextConfig = {
           { key: 'Cache-Control', value: 'no-store' },
         ],
       },
+      {
+        // Uploaded files are member-supplied bytes served from our own
+        // origin, which is exactly the shape of a stored-XSS hole. The type
+        // is already derived from the bytes rather than the uploader's claim,
+        // and this is the second lock: whatever a file turns out to be, it
+        // may not execute, load anything, or reach the network. Declared
+        // after the general /api rule so it wins on the shared keys.
+        source: '/api/files/:path*',
+        headers: [
+          { key: 'Content-Security-Policy', value: "default-src 'none'; sandbox" },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Content-Disposition', value: 'inline' },
+        ],
+      },
     ];
   },
 };

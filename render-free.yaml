@@ -77,9 +77,8 @@ services:
         value: iPastor <no-reply@ipastor.onrender.com>
       - key: PUSH_NOTIFICATION_KEY
         sync: false
-      - key: VIDEO_SERVICE_KEY
-        sync: false
-      - key: STORAGE_KEY
-        sync: false
+      # Free voice/video for counselling sessions. No account needed.
+      - key: VIDEO_SERVICE_URL
+        value: https://meet.jit.si
       - key: BACKUP_SCHEDULE
         sync: false
