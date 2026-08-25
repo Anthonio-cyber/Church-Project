@@ -1,4 +1,4 @@
-# Deploying 𝒾Pastor to Render at ipastor.org
+# Deploying 𝒾Pastor to Render at ipastor.church
 
 A step-by-step walkthrough. Allow about 40 minutes, most of it waiting for the
 first build and for DNS.
@@ -9,9 +9,14 @@ first build and for DNS.
 
 You need three things:
 
-1. **The domain `ipastor.org`**, registered and with access to its DNS settings.
-   At the time of writing it already resolves, so confirm you own it — or
-   register an alternative and substitute it everywhere below.
+1. **The domain `ipastor.church`**, registered and with access to its DNS
+   settings. It was unregistered when this was written — register it before you
+   start, at Namecheap, Porkbun, Cloudflare Registrar or any registrar that
+   sells `.church` (roughly £25–35 a year; it is a sponsored TLD, so it costs
+   more than `.org`).
+
+   If you end up on a different domain, substitute it everywhere below and in
+   `render.yaml`, `.env.example` and `apps/mobile/eas.json`.
 2. **A Render account** — <https://render.com>, free to create. Sign in with
    GitHub so it can see the repository.
 3. **PR #1 merged to `main`**, or change `branch:` in `render.yaml` to
@@ -71,13 +76,13 @@ If `status` is `degraded`, the database is not reachable — check the
 
 ---
 
-## Step 3 — Point ipastor.org at it
+## Step 3 — Point ipastor.church at it
 
 **In Render:** service → **Settings** → **Custom Domains** → **Add Custom
 Domain**. Add both:
 
-- `ipastor.org`
-- `www.ipastor.org`
+- `ipastor.church`
+- `www.ipastor.church`
 
 Render then shows the DNS records it wants. They look like this:
 
@@ -92,9 +97,9 @@ Render then shows the DNS records it wants. They look like this:
 each record.
 
 The one mistake almost everyone makes: in the **Host** or **Name** field, enter
-only `@` or `www` — *not* `ipastor.org` or `www.ipastor.org`. The registrar
+only `@` or `www` — *not* `ipastor.church` or `www.ipastor.church`. The registrar
 appends your domain automatically, so typing the full name gives you
-`www.ipastor.org.ipastor.org`.
+`www.ipastor.church.ipastor.church`.
 
 If your registrar does not support `A` records at the apex, use Cloudflare DNS
 (free) which supports `CNAME` flattening, or point the apex at `www` with a
@@ -110,7 +115,7 @@ green tick per domain once it verifies and issues the TLS certificate.
 Once the domain is live: **Environment** → confirm
 
 ```
-NEXT_PUBLIC_APP_URL = https://ipastor.org
+NEXT_PUBLIC_APP_URL = https://ipastor.church
 ```
 
 `render.yaml` already sets this, but check it matches exactly — no trailing
@@ -122,9 +127,11 @@ Changing it triggers a redeploy.
 
 ---
 
-## Step 5 — Load demonstration data (optional)
+## Step 5 — Create the Super Admin account
 
-To explore the platform with the demo accounts:
+The seed script creates no fictional people or content — only the permission
+catalogue, the roles, and one real Super Admin account so someone can sign in
+and set everything else up from inside the platform.
 
 **Environment** → add `SEED_ON_START` = `true` → save → wait for the redeploy →
 then **set it back to `false`**. Leaving it on re-runs the seed on every deploy.
@@ -135,10 +142,11 @@ Or run it once from **Shell**:
 cd /app/apps/web && npx tsx prisma/seed.ts
 ```
 
-Sign in at `https://ipastor.org/login` with `setman@example.org` /
-`AdminDemo2024!Ministry`.
-
-**Before real members use the platform, remove every demo account.**
+By default this creates `tony@rcnglobal.com` / `Tony1234` — override before
+deploying by setting `SEED_SUPER_ADMIN_EMAIL` and `SEED_SUPER_ADMIN_PASSWORD`
+in **Environment**. Either way, sign in at `https://ipastor.church/login` and
+**immediately** change the password and enrol multi-factor authentication —
+see Step 7.
 
 ---
 
@@ -148,26 +156,28 @@ Nothing else can complete account verification, so do this before launch.
 
 1. Create a [Resend](https://resend.com) account (or any provider — the adapter
    is provider-agnostic).
-2. Verify `ipastor.org` as a sending domain. The provider gives you SPF, DKIM
+2. Verify `ipastor.church` as a sending domain. The provider gives you SPF, DKIM
    and DMARC records — **TXT records**, added at your registrar exactly like
    Step 3.
 3. In Render: **Environment** → set `EMAIL_API_KEY`, and confirm
-   `EMAIL_FROM = iPastor <no-reply@ipastor.org>`.
+   `EMAIL_FROM = iPastor <no-reply@ipastor.church>`.
 4. Register a test account and confirm the email arrives.
 
 ---
 
 ## Step 7 — First-run setup
 
-1. Sign in as the Setman.
-2. **Privacy & Security → Multi-factor authentication → Set up.** Until you do,
+1. Sign in as the seeded Super Admin (Step 5).
+2. **Privacy & Security → change the password** — the seeded one is
+   deliberately temporary.
+3. **Privacy & Security → Multi-factor authentication → Set up.** Until you do,
    every sensitive action is blocked — hierarchy changes, appointments,
    emergency controls. That is deliberate.
-3. **Super Admin → Church Hierarchy.** The Setman, Rev. Tony and
-   Pst. Gabriel Adayi records are seeded as *provisional* and are not published
-   publicly. Confirm each with the organisation, or remove and replace them.
-4. **Super Admin → Administrators.** Appoint the real administrators.
-5. **Admin → Users.** Remove the demo accounts.
+4. **Super Admin → Church Hierarchy.** Add the real leadership structure —
+   nothing is pre-populated.
+5. **Super Admin → Administrators.** Appoint the real administrators, then
+   decide whether the seeded account stays as a real person's login or gets
+   removed now that it's done its job.
 
 ---
 
@@ -184,7 +194,7 @@ backups as configured.
 
 ## Step 9 — The mobile apps
 
-`apps/mobile` is already pointed at `https://ipastor.org`. When you are ready:
+`apps/mobile` is already pointed at `https://ipastor.church`. When you are ready:
 
 ```bash
 cd apps/mobile
