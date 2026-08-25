@@ -104,10 +104,25 @@ export const connectionRequestSchema = z.object({
 
 export const messageSchema = z.object({
   conversationId: uuidSchema,
-  body: z.string().trim().min(1, 'Write a message first.').max(4000),
+  // A message carrying a file may have no words of its own.
+  body: z.string().trim().max(4000),
   kind: z.enum(['TEXT', 'SCRIPTURE', 'RESOURCE']).default('TEXT'),
   scriptureRef: z.string().trim().max(80).optional().or(z.literal('')),
-});
+  // Only a file this platform is hosting. The send route additionally checks
+  // that this sender uploaded it into this conversation.
+  attachmentUrl: z
+    .string()
+    .regex(
+      /^\/api\/files\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      'That attachment could not be found.',
+    )
+    .optional(),
+})
+  // Something must actually be sent.
+  .refine((value) => value.body.trim().length > 0 || value.attachmentUrl, {
+    message: 'Write a message or attach a file.',
+    path: ['body'],
+  });
 
 export const prayerRequestSchema = z.object({
   title: z.string().trim().min(3).max(120),

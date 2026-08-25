@@ -9,7 +9,8 @@ import {
 } from '@/lib/api';
 import { requireUser } from '@/lib/auth/context';
 import { messageSchema } from '@/lib/validation';
-import { isBlockedBetween } from '@/lib/domain/connections';
+import { assertCanWriteToConversation } from '@/lib/domain/messaging';
+import { fileIdFromUrl } from '@/lib/domain/files';
 import { assertFeatureEnabled } from '@/lib/domain/settings';
 import { channels, publish } from '@/lib/realtime';
 import { notify } from '@/lib/notifications';
@@ -32,53 +33,53 @@ export const POST = route(async (request: Request) => {
 
   const input = await parseBody(request, messageSchema);
 
-  const membership = await prisma.conversationParticipant.findUnique({
-    where: {
-      conversationId_userId: { conversationId: input.conversationId, userId: context.user.id },
-    },
-    include: {
-      conversation: {
-        include: {
-          participants: true,
-          session: { select: { id: true, status: true } },
-        },
-      },
-    },
-  });
-
-  if (!membership || membership.leftAt) {
-    throw new ApiError(404, 'not_found', 'That conversation could not be found.');
-  }
-  if (!membership.conversation.isActive) {
-    throw new ApiError(409, 'conversation_closed', 'This conversation is closed.');
-  }
-
-  if (membership.conversation.kind === 'COUNSELLING') {
-    const status = membership.conversation.session?.status;
-    if (!status || !['WAITING', 'COUNSELLOR_JOINED', 'ACTIVE'].includes(status)) {
-      throw new ApiError(
-        409,
-        'session_not_active',
-        'This pastoral session is not currently in progress.',
-      );
-    }
-  }
-
-  const others = membership.conversation.participants.filter(
-    (p) => p.userId !== context.user.id,
+  // The same rule the attachment upload applies, from one place.
+  const { membership, others } = await assertCanWriteToConversation(
+    context.user.id,
+    input.conversationId,
   );
-  for (const other of others) {
-    if (await isBlockedBetween(context.user.id, other.userId)) {
-      throw new ApiError(403, 'blocked', 'This message cannot be delivered.');
+
+  // An attachment is only accepted if it was uploaded by this sender, into
+  // this conversation, and has not already been sent. Without all three, a
+  // sender could quote any file id they had ever seen and have the platform
+  // serve it to a conversation it does not belong to.
+  let attachment: { url: string; fileName: string | null } | null = null;
+  if (input.attachmentUrl) {
+    const id = fileIdFromUrl(input.attachmentUrl);
+    const stored = id
+      ? await prisma.storedFile.findUnique({
+          where: { id },
+          select: { id: true, ownerId: true, conversationId: true, purpose: true, fileName: true },
+        })
+      : null;
+
+    if (
+      !stored ||
+      stored.purpose !== 'MESSAGE_ATTACHMENT' ||
+      stored.ownerId !== context.user.id ||
+      stored.conversationId !== input.conversationId
+    ) {
+      throw new ApiError(422, 'unknown_attachment', 'That attachment could not be found.');
     }
+
+    const alreadySent = await prisma.message.findFirst({
+      where: { attachmentUrl: input.attachmentUrl },
+      select: { id: true },
+    });
+    if (alreadySent) {
+      throw new ApiError(409, 'attachment_already_sent', 'That attachment has already been sent.');
+    }
+
+    attachment = { url: input.attachmentUrl, fileName: stored.fileName };
   }
 
   const message = await prisma.message.create({
     data: {
       conversationId: input.conversationId,
       senderId: context.user.id,
-      kind: input.kind,
+      kind: attachment ? 'FILE' : input.kind,
       body: input.body,
+      attachmentUrl: attachment?.url ?? null,
       scriptureRef: input.scriptureRef && input.scriptureRef.length > 0 ? input.scriptureRef : null,
     },
   });
@@ -94,6 +95,8 @@ export const POST = route(async (request: Request) => {
     senderId: message.senderId,
     kind: message.kind,
     body: message.body,
+    attachmentUrl: message.attachmentUrl,
+    attachmentName: attachment?.fileName ?? null,
     scriptureRef: message.scriptureRef,
     createdAt: message.createdAt.toISOString(),
   });
@@ -123,6 +126,8 @@ export const POST = route(async (request: Request) => {
       id: message.id,
       body: message.body,
       kind: message.kind,
+      attachmentUrl: message.attachmentUrl,
+      attachmentName: attachment?.fileName ?? null,
       createdAt: message.createdAt,
       isMine: true,
     },

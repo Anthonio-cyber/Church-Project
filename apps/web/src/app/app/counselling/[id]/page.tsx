@@ -8,6 +8,7 @@ import { PermissionDenied } from '@/components/ui';
 import { AuthError } from '@/lib/auth/context';
 import { assertSessionAccess, CATEGORY_LABEL, readSessionNotes, waitingRoomState } from '@/lib/domain/counselling';
 import { videoRoomForSession } from '@/lib/domain/video';
+import { attachmentNamesFor } from '@/lib/domain/files';
 
 export const metadata: Metadata = { title: 'Private pastoral session' };
 export const dynamic = 'force-dynamic';
@@ -73,6 +74,10 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
       })
     : [];
 
+  const attachmentNames = await attachmentNamesFor(
+    messages.map((message) => message.attachmentUrl),
+  );
+
   const state = waitingRoomState(session);
 
   // Derived only after assertSessionAccess has confirmed this viewer is a
@@ -120,6 +125,9 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
           scriptureRef: message.scriptureRef,
           createdAt: message.createdAt.toISOString(),
           isMine: message.senderId === context.user.id,
+          attachmentUrl: message.attachmentUrl,
+          attachmentName: attachmentNames.get(message.attachmentUrl ?? '')?.fileName ?? null,
+          attachmentType: attachmentNames.get(message.attachmentUrl ?? '')?.contentType ?? null,
         }))}
       />
 

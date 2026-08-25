@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { MessageAttachment } from './MessageAttachment';
 import { useRouter } from 'next/navigation';
 
 export type ChatMessage = {
@@ -10,6 +11,9 @@ export type ChatMessage = {
   createdAt: string;
   isMine: boolean;
   deleted: boolean;
+  attachmentUrl?: string | null;
+  attachmentName?: string | null;
+  attachmentType?: string | null;
 };
 
 /** A private conversation between two connected members. */
@@ -34,7 +38,14 @@ export function ConversationView({
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pending, setPending] = useState<{
+    url: string;
+    fileName: string | null;
+    contentType: string;
+  } | null>(null);
+  const [attaching, setAttaching] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const source = new EventSource(`/api/realtime?conversationId=${conversationId}`);
@@ -53,6 +64,9 @@ export function ConversationView({
                 createdAt: payload.createdAt,
                 isMine: payload.senderId === viewerId,
                 deleted: false,
+                attachmentUrl: payload.attachmentUrl ?? null,
+                attachmentName: payload.attachmentName ?? null,
+                attachmentType: payload.attachmentType ?? null,
               },
             ],
       );
@@ -64,24 +78,58 @@ export function ConversationView({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
+  async function upload(file: File) {
+    setAttaching(true);
+    setError(null);
+    const form = new FormData();
+    form.append('file', file);
+    form.append('conversationId', conversationId);
+
+    const response = await fetch('/api/files/attachment', { method: 'POST', body: form }).catch(
+      () => null,
+    );
+    const payload = await response?.json().catch(() => null);
+
+    if (!response?.ok) {
+      setError(payload?.error?.message ?? 'That file could not be attached.');
+      setAttaching(false);
+      return;
+    }
+
+    setPending({
+      url: payload.data.attachment.url,
+      fileName: payload.data.attachment.fileName,
+      contentType: payload.data.attachment.contentType,
+    });
+    setAttaching(false);
+  }
+
   async function send(event: React.FormEvent) {
     event.preventDefault();
-    if (!draft.trim()) return;
+    // A file on its own is a message; words on their own are too.
+    if (!draft.trim() && !pending) return;
     setSending(true);
     setError(null);
     const body = draft;
+    const attachment = pending;
     setDraft('');
+    setPending(null);
 
     const response = await fetch('/api/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conversationId, body }),
+      body: JSON.stringify({
+        conversationId,
+        body,
+        ...(attachment ? { attachmentUrl: attachment.url } : {}),
+      }),
     }).catch(() => null);
     const payload = await response?.json().catch(() => null);
 
     if (!response?.ok) {
       setError(payload?.error?.message ?? 'That message could not be sent.');
       setDraft(body);
+      setPending(attachment);
       setSending(false);
       return;
     }
@@ -98,6 +146,9 @@ export function ConversationView({
               createdAt: payload.data.message.createdAt,
               isMine: true,
               deleted: false,
+              attachmentUrl: payload.data.message.attachmentUrl ?? null,
+              attachmentName: payload.data.message.attachmentName ?? null,
+              attachmentType: attachment?.contentType ?? null,
             },
           ],
     );
@@ -178,9 +229,19 @@ export function ConversationView({
                     : 'bg-parchment-100 text-ink-800 dark:bg-ink-800 dark:text-parchment-100'
                 }`}
               >
-                <p className="whitespace-pre-wrap">
-                  {message.deleted ? <em>This message was removed.</em> : message.body}
-                </p>
+                {message.body || message.deleted ? (
+                  <p className="whitespace-pre-wrap">
+                    {message.deleted ? <em>This message was removed.</em> : message.body}
+                  </p>
+                ) : null}
+                {!message.deleted && message.attachmentUrl ? (
+                  <MessageAttachment
+                    url={message.attachmentUrl}
+                    fileName={message.attachmentName ?? null}
+                    contentType={message.attachmentType ?? null}
+                    mine={message.isMine}
+                  />
+                ) : null}
                 <p className="mt-1 text-[0.65rem] opacity-70">
                   {new Date(message.createdAt).toLocaleTimeString(undefined, {
                     hour: '2-digit',
@@ -200,7 +261,24 @@ export function ConversationView({
       ) : null}
 
       {isActive ? (
-        <form onSubmit={send} className="flex gap-3 border-t border-ink-200 p-4 dark:border-ink-800">
+        <form onSubmit={send} className="border-t border-ink-200 p-4 dark:border-ink-800">
+          {pending ? (
+            <div className="mb-3 flex items-center gap-3 rounded-lg border border-gold-300 bg-gold-50 px-3 py-2 text-sm dark:border-gold-800 dark:bg-gold-950/30">
+              <span aria-hidden>⎙</span>
+              <span className="min-w-0 flex-1 truncate">
+                {pending.fileName ?? 'Attachment'} ready to send
+              </span>
+              <button
+                type="button"
+                onClick={() => setPending(null)}
+                className="shrink-0 text-xs underline underline-offset-2"
+              >
+                Remove
+              </button>
+            </div>
+          ) : null}
+
+          <div className="flex gap-3">
           <label htmlFor="conversationBody" className="sr-only">
             Your message
           </label>
@@ -219,13 +297,35 @@ export function ConversationView({
             placeholder="Write a message…"
             className="input flex-1 resize-none"
           />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,application/pdf"
+            className="sr-only"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = '';
+              if (file) void upload(file);
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={attaching || sending}
+            title="Attach a file"
+            aria-label="Attach a file"
+            className="min-h-[2.75rem] shrink-0 self-end rounded-lg border border-ink-300 px-4 text-sm disabled:opacity-50 dark:border-ink-700"
+          >
+            {attaching ? '…' : '⎙'}
+          </button>
           <button
             type="submit"
-            disabled={sending || !draft.trim()}
+            disabled={sending || (!draft.trim() && !pending)}
             className="min-h-[2.75rem] shrink-0 self-end rounded-lg bg-gold-sheen px-5 text-sm font-semibold text-ink-950 disabled:opacity-50"
           >
             Send
           </button>
+          </div>
         </form>
       ) : (
         <p className="border-t border-ink-200 px-5 py-4 text-center text-sm text-ink-500 dark:border-ink-800 dark:text-parchment-400">
