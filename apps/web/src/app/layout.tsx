@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ServiceWorkerRegistrar } from '@/components/app/ServiceWorkerRegistrar';
+import { Analytics } from '@vercel/analytics/next';
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
 const brandName = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'iPastor';
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </a>
         {children}
         <ServiceWorkerRegistrar />
+        <Analytics />
       </body>
     </html>
   );

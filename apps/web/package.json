@@ -16,9 +16,12 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force"
   },
-  "prisma": { "seed": "tsx prisma/seed.ts" },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "dependencies": {
     "@prisma/client": "^6.2.1",
+    "@vercel/analytics": "^2.0.1",
     "next": "^15.1.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
