@@ -19,7 +19,6 @@ RUN npm ci --workspace=apps/web --include-workspace-root
 # ── Build ───────────────────────────────────────────────────────────────────
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY package.json package-lock.json* ./
 COPY apps/web ./apps/web
 
