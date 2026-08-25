@@ -49,11 +49,16 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone /app
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static /app/apps/web/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public /app/apps/web/public
 
-# Prisma schema, migrations and engine, so the container can migrate on start.
+# Prisma schema and migrations, so the container can migrate on start.
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/prisma /app/apps/web/prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma /app/node_modules/prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma /app/node_modules/@prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma /app/node_modules/.prisma
+
+# The full node_modules from the builder stage — not just the @prisma/.prisma
+# runtime pieces. The entrypoint runs `npx prisma migrate deploy` (and
+# optionally `npx tsx prisma/seed.ts`), and both `prisma` and `tsx` are
+# devDependencies: npx needs their actual packages, node_modules/.bin shims
+# and transitive dependencies present, not a partial copy, or it falls
+# through to treating them as missing global commands.
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules /app/node_modules
 
 COPY --chown=nextjs:nodejs docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
