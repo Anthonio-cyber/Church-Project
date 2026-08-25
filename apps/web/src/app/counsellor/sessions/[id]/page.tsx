@@ -7,6 +7,7 @@ import { CounsellingSessionRoom } from '@/components/app/CounsellingSessionRoom'
 import { PermissionDenied } from '@/components/ui';
 import { AuthError } from '@/lib/auth/context';
 import { assertSessionAccess, CATEGORY_LABEL, waitingRoomState } from '@/lib/domain/counselling';
+import { videoRoomForSession } from '@/lib/domain/video';
 
 export const metadata: Metadata = { title: 'Counselling session' };
 export const dynamic = 'force-dynamic';
@@ -69,6 +70,12 @@ export default async function CounsellorSessionPage({
       <CounsellingSessionRoom
         viewerId={context.user.id}
         viewerRole="counsellor"
+        videoRoom={(() => {
+          // Derived only after assertSessionAccess confirmed this counsellor
+          // is the one assigned to the session.
+          const room = videoRoomForSession(session.id, session.method);
+          return room ? { origin: room.origin, url: room.url, method: session.method } : null;
+        })()}
         session={{
           id: session.id,
           status: session.status,

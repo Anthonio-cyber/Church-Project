@@ -1,6 +1,20 @@
 /** @type {import('next').NextConfig} */
 const isProd = process.env.NODE_ENV === 'production';
 
+// The voice/video service, when one is configured. Only its origin is trusted,
+// and only for framing and device access — never for scripts on our own pages.
+// An unset or malformed value simply leaves video disabled rather than
+// widening the policy.
+const videoOrigin = (() => {
+  const raw = process.env.VIDEO_SERVICE_URL;
+  if (!raw) return null;
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return null;
+  }
+})();
+
 // Content Security Policy. Next.js needs 'unsafe-inline' for its injected
 // bootstrap styles; in development the dev overlay also needs 'unsafe-eval'.
 const csp = [
@@ -11,6 +25,9 @@ const csp = [
   "media-src 'self' blob: https:",
   "font-src 'self' data:",
   "connect-src 'self' https: wss:",
+  // frame-src would otherwise fall back to default-src 'self' and block the
+  // counselling call embed.
+  `frame-src 'self'${videoOrigin ? ` ${videoOrigin}` : ''}`,
   "frame-ancestors 'none'",
   "form-action 'self'",
   "base-uri 'self'",
@@ -24,7 +41,18 @@ const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'X-DNS-Prefetch-Control', value: 'off' },
-  { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=(), interest-cohort=()' },
+  {
+    key: 'Permissions-Policy',
+    // Camera and microphone are granted to the call embed only when a video
+    // service is configured; with none, they stay same-origin as before.
+    value: [
+      `camera=(self${videoOrigin ? ` "${videoOrigin}"` : ''})`,
+      `microphone=(self${videoOrigin ? ` "${videoOrigin}"` : ''})`,
+      `display-capture=(self${videoOrigin ? ` "${videoOrigin}"` : ''})`,
+      'geolocation=()',
+      'interest-cohort=()',
+    ].join(', '),
+  },
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
   { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
   {
