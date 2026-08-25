@@ -7,6 +7,7 @@ import { CounsellingSessionRoom } from '@/components/app/CounsellingSessionRoom'
 import { PermissionDenied } from '@/components/ui';
 import { AuthError } from '@/lib/auth/context';
 import { assertSessionAccess, CATEGORY_LABEL, readSessionNotes, waitingRoomState } from '@/lib/domain/counselling';
+import { videoRoomForSession } from '@/lib/domain/video';
 
 export const metadata: Metadata = { title: 'Private pastoral session' };
 export const dynamic = 'force-dynamic';
@@ -74,6 +75,10 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
 
   const state = waitingRoomState(session);
 
+  // Derived only after assertSessionAccess has confirmed this viewer is a
+  // participant, so the room name never reaches anyone else.
+  const videoRoom = videoRoomForSession(session.id, session.method);
+
   return (
     <>
       <AppPageHeader
@@ -85,6 +90,11 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
       <CounsellingSessionRoom
         viewerId={context.user.id}
         viewerRole={viewerRole}
+        videoRoom={
+          videoRoom
+            ? { origin: videoRoom.origin, url: videoRoom.url, method: session.method }
+            : null
+        }
         session={{
           id: session.id,
           status: session.status,

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { VideoCallPanel, type VideoRoomView } from './VideoCallPanel';
 
 export type SessionView = {
   id: string;
@@ -41,6 +42,8 @@ type Props = {
   initialMessages: SessionMessage[];
   viewerId: string;
   viewerRole: 'member' | 'counsellor';
+  /** Present only for voice/video sessions when a video service is configured. */
+  videoRoom?: VideoRoomView | null;
 };
 
 /**
@@ -50,7 +53,13 @@ type Props = {
  * anyone else waiting, and the counsellor's internal notes. The waiting room
  * holds one person, because that is all the server will ever tell it about.
  */
-export function CounsellingSessionRoom({ session, initialMessages, viewerId, viewerRole }: Props) {
+export function CounsellingSessionRoom({
+  session,
+  initialMessages,
+  viewerId,
+  viewerRole,
+  videoRoom,
+}: Props) {
   const router = useRouter();
   const [state, setState] = useState(session);
   const [messages, setMessages] = useState<SessionMessage[]>(initialMessages);
@@ -425,91 +434,95 @@ export function CounsellingSessionRoom({ session, initialMessages, viewerId, vie
 
         <p className="text-xs leading-relaxed text-ink-500 dark:text-parchment-400">
           This session is not recorded.{' '}
-          {state.method !== 'TEXT'
-            ? 'Voice and video are provided through a separate secure service configured by the ministry; if it is unavailable, this written channel remains open.'
+          {state.method !== 'TEXT' && !videoRoom
+            ? 'Voice and video have not been configured for this platform yet, so this written channel is the way to meet.'
             : ''}
         </p>
       </aside>
 
-      {/* Conversation */}
-      <section className="flex min-h-[32rem] flex-col rounded-xl border border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-900">
-        <header className="border-b border-ink-200 px-5 py-3 dark:border-ink-800">
-          <h2 className="font-serif text-base font-semibold">
-            {viewerRole === 'counsellor' ? 'PRIVATE COUNSELLING SESSION' : 'PRIVATE PASTORAL SESSION'}
-          </h2>
-          <p className="mt-0.5 text-xs text-ink-500 dark:text-parchment-400">
-            Visible only to you and {state.counterpartName}.
-          </p>
-        </header>
+      <div className="space-y-6">
+        {videoRoom ? <VideoCallPanel room={videoRoom} /> : null}
 
-        <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
-          {messages.length === 0 ? (
-            <p className="py-10 text-center text-sm text-ink-500 dark:text-parchment-400">
-              The conversation begins here.
+        {/* Conversation */}
+        <section className="flex min-h-[32rem] flex-col rounded-xl border border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-900">
+          <header className="border-b border-ink-200 px-5 py-3 dark:border-ink-800">
+            <h2 className="font-serif text-base font-semibold">
+              {viewerRole === 'counsellor' ? 'PRIVATE COUNSELLING SESSION' : 'PRIVATE PASTORAL SESSION'}
+            </h2>
+            <p className="mt-0.5 text-xs text-ink-500 dark:text-parchment-400">
+              Visible only to you and {state.counterpartName}.
             </p>
-          ) : (
-            messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.isMine ? 'justify-end' : 'justify-start'}`}
-              >
+          </header>
+
+          <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+            {messages.length === 0 ? (
+              <p className="py-10 text-center text-sm text-ink-500 dark:text-parchment-400">
+                The conversation begins here.
+              </p>
+            ) : (
+              messages.map((message) => (
                 <div
-                  className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                    message.isMine
-                      ? 'bg-gold-sheen text-ink-950'
-                      : 'bg-parchment-100 text-ink-800 dark:bg-ink-800 dark:text-parchment-100'
-                  }`}
+                  key={message.id}
+                  className={`flex ${message.isMine ? 'justify-end' : 'justify-start'}`}
                 >
-                  {message.scriptureRef ? (
-                    <p className="mb-1 text-xs font-semibold opacity-80">{message.scriptureRef}</p>
-                  ) : null}
-                  <p className="whitespace-pre-wrap">{message.body}</p>
-                  <p className="mt-1 text-[0.65rem] opacity-70">
-                    {new Date(message.createdAt).toLocaleTimeString(undefined, {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </p>
+                  <div
+                    className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                      message.isMine
+                        ? 'bg-gold-sheen text-ink-950'
+                        : 'bg-parchment-100 text-ink-800 dark:bg-ink-800 dark:text-parchment-100'
+                    }`}
+                  >
+                    {message.scriptureRef ? (
+                      <p className="mb-1 text-xs font-semibold opacity-80">{message.scriptureRef}</p>
+                    ) : null}
+                    <p className="whitespace-pre-wrap">{message.body}</p>
+                    <p className="mt-1 text-[0.65rem] opacity-70">
+                      {new Date(message.createdAt).toLocaleTimeString(undefined, {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))
-          )}
-        </div>
+              ))
+            )}
+          </div>
 
-        {error ? (
-          <p role="alert" className="border-t border-red-200 bg-red-50 px-5 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
-            {error}
-          </p>
-        ) : null}
+          {error ? (
+            <p role="alert" className="border-t border-red-200 bg-red-50 px-5 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+              {error}
+            </p>
+          ) : null}
 
-        <form onSubmit={send} className="flex gap-3 border-t border-ink-200 p-4 dark:border-ink-800">
-          <label htmlFor="messageBody" className="sr-only">
-            Your message
-          </label>
-          <textarea
-            id="messageBody"
-            rows={2}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                void send(event as unknown as React.FormEvent);
-              }
-            }}
-            placeholder="Write your message…"
-            maxLength={4000}
-            className="input flex-1 resize-none"
-          />
-          <button
-            type="submit"
-            disabled={sending || !draft.trim()}
-            className="min-h-[2.75rem] shrink-0 self-end rounded-lg bg-gold-sheen px-5 text-sm font-semibold text-ink-950 disabled:opacity-50"
-          >
-            {sending ? 'Sending…' : 'Send'}
-          </button>
-        </form>
-      </section>
+          <form onSubmit={send} className="flex gap-3 border-t border-ink-200 p-4 dark:border-ink-800">
+            <label htmlFor="messageBody" className="sr-only">
+              Your message
+            </label>
+            <textarea
+              id="messageBody"
+              rows={2}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault();
+                  void send(event as unknown as React.FormEvent);
+                }
+              }}
+              placeholder="Write your message…"
+              maxLength={4000}
+              className="input flex-1 resize-none"
+            />
+            <button
+              type="submit"
+              disabled={sending || !draft.trim()}
+              className="min-h-[2.75rem] shrink-0 self-end rounded-lg bg-gold-sheen px-5 text-sm font-semibold text-ink-950 disabled:opacity-50"
+            >
+              {sending ? 'Sending…' : 'Send'}
+            </button>
+          </form>
+        </section>
+      </div>
     </div>
   );
 }

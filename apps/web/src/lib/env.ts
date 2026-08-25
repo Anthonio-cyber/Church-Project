@@ -58,7 +58,11 @@ export function integrationStatus(name: IntegrationName): 'configured' | 'not_co
     email: env.emailApiKey,
     push: env.pushKey,
     realtime: env.realtimeSecret,
-    video: env.videoServiceKey,
+    // The service URL, not the key, is what actually makes calls work: a
+    // public Jitsi instance needs no key at all. Reporting on the key would
+    // have shown "configured" for a deployment where video does nothing.
+    // Read at call time to match lib/domain/video.ts.
+    video: process.env.VIDEO_SERVICE_URL || undefined,
     storage: env.storageKey,
   };
   return map[name] ? 'configured' : 'not_configured';

@@ -17,6 +17,7 @@ import { ROLE_RANK, DEFAULT_ROLE_PERMISSIONS, SENSITIVE_PERMISSIONS } from '../s
 import { canMessage, guardConnectionRequest, searchDirectory, isBlockedBetween } from '../src/lib/domain/connections';
 import { triage } from '../src/lib/domain/safeguarding';
 import { waitingRoomState } from '../src/lib/domain/counselling';
+import { videoRoomName, videoRoomForSession } from '../src/lib/domain/video';
 
 const prisma = new PrismaClient();
 
@@ -639,5 +640,39 @@ describe('The audit log survives lawful erasure of a person', () => {
     ).rejects.toThrow();
 
     delete ids.erasable;
+  });
+});
+
+describe('Voice and video rooms for counselling sessions', () => {
+  it('gives the same room to both participants, every time', () => {
+    const first = videoRoomName(sessionId);
+    const second = videoRoomName(sessionId);
+    // Both sides derive independently; they must land in the same room.
+    expect(first).toBe(second);
+  });
+
+  it('does not leak the session id into the room name', () => {
+    const room = videoRoomName(sessionId);
+    // The session id is visible in the URL bar. If it appeared in the room
+    // name, anyone who saw a session link could join the call.
+    expect(room).not.toContain(sessionId);
+    expect(room.length).toBeGreaterThan(24);
+  });
+
+  it('gives different sessions different rooms', () => {
+    const a = videoRoomName('11111111-1111-1111-1111-111111111111');
+    const b = videoRoomName('22222222-2222-2222-2222-222222222222');
+    expect(a).not.toBe(b);
+  });
+
+  it('offers no room for a written session, even when video is configured', () => {
+    process.env.VIDEO_SERVICE_URL = 'https://meet.jit.si';
+    expect(videoRoomForSession(sessionId, 'TEXT')).toBeNull();
+    delete process.env.VIDEO_SERVICE_URL;
+  });
+
+  it('offers no room at all when no video service is configured', () => {
+    delete process.env.VIDEO_SERVICE_URL;
+    expect(videoRoomForSession(sessionId, 'VIDEO')).toBeNull();
   });
 });
