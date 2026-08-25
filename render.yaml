@@ -70,7 +70,13 @@ services:
         sync: false
       - key: EMAIL_FROM
         value: iPastor <no-reply@ipastor.church>
+      # Mobile push, once the apps ship. Browser push needs only the VAPID
+      # pair below, which is free and needs no third-party account.
       - key: PUSH_NOTIFICATION_KEY
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
         sync: false
       # Free voice/video for counselling sessions. No account needed.
       - key: VIDEO_SERVICE_URL

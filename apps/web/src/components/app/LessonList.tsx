@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { VideoEmbed } from './VideoEmbed';
 
 export type LessonView = {
   id: string;
@@ -101,18 +102,14 @@ export function LessonList({ courseSlug, lessons }: { courseSlug: string; lesson
                   {lesson.body}
                 </div>
 
-                {lesson.videoUrl || lesson.audioUrl || lesson.pdfUrl ? (
+                {lesson.videoUrl ? (
+                  <div className="mt-5">
+                    <VideoEmbed url={lesson.videoUrl} title={lesson.title} />
+                  </div>
+                ) : null}
+
+                {lesson.audioUrl || lesson.pdfUrl ? (
                   <div className="mt-5 flex flex-wrap gap-3">
-                    {lesson.videoUrl ? (
-                      <a
-                        href={lesson.videoUrl}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="rounded-lg border border-ink-300 px-4 py-2 text-sm dark:border-ink-700"
-                      >
-                        Watch video
-                      </a>
-                    ) : null}
                     {lesson.audioUrl ? (
                       <a
                         href={lesson.audioUrl}

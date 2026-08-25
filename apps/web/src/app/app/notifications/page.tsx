@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { requirePageUser } from '@/lib/auth/guard';
 import { AppPageHeader } from '@/components/app/AppShell';
 import { NotificationList } from '@/components/app/NotificationList';
+import { PushNotificationToggle } from '@/components/app/PushNotificationToggle';
 
 export const metadata: Metadata = { title: 'Notifications' };
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,13 @@ export default async function NotificationsPage() {
   return (
     <>
       <AppPageHeader eyebrow="Notifications" title="What you have missed" />
+
+      <div className="mb-8">
+        {/* The public key is public by design — it is what the browser
+            encrypts to, and it identifies this platform to the push service. */}
+        <PushNotificationToggle vapidPublicKey={process.env.VAPID_PUBLIC_KEY ?? null} />
+      </div>
+
       <NotificationList
         notifications={notifications.map((notification) => ({
           id: notification.id,

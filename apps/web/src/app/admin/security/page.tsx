@@ -178,6 +178,32 @@ export default async function AdminSecurityPage() {
         </Card>
 
         <Card>
+          <h2 className="mb-2 font-serif text-lg font-semibold">Backups</h2>
+          <p className="text-sm leading-relaxed text-ink-600 dark:text-parchment-300">
+            Download a complete export of the platform&rsquo;s data and keep it somewhere
+            other than this server. A copy that only exists here is not a backup.
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-ink-600 dark:text-parchment-300">
+            Counselling notes and safeguarding narratives are included in their
+            encrypted form. Restoring them needs{' '}
+            <code className="rounded bg-ink-100 px-1 py-0.5 text-xs dark:bg-ink-800">
+              DATA_ENCRYPTION_KEY
+            </code>
+            , which is deliberately not in the file — so keep that key somewhere
+            separate from these downloads.
+          </p>
+          <a
+            href="/api/admin/backup"
+            className="mt-5 inline-flex min-h-[2.75rem] items-center rounded-lg bg-gold-sheen px-5 text-sm font-semibold text-ink-950"
+          >
+            Download a backup
+          </a>
+          <p className="mt-3 text-xs text-ink-500 dark:text-parchment-400">
+            Taking a copy of everything is recorded in the audit log, with your name.
+          </p>
+        </Card>
+
+        <Card>
           <h2 className="mb-4 font-serif text-lg font-semibold">Recent security events</h2>
           {recentEvents.length === 0 ? (
             <p className="text-sm text-ink-500 dark:text-parchment-400">

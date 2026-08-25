@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db';
-import { env } from '@/lib/env';
+import { env, integrationStatus } from '@/lib/env';
 import {
   assertSameOrigin,
   clientIdentity,
@@ -65,12 +65,20 @@ export const POST = route(async (request: Request) => {
   const passwordHash = await hashPassword(input.password);
   const verificationToken = generateToken(32);
 
+  // Whether a new account must confirm its address follows whether this
+  // deployment can actually send that confirmation. With no mail provider
+  // configured, requiring verification would leave every new member stranded
+  // at a message about an email that was never sent. When a provider is
+  // configured the gate returns on its own — nothing here needs changing.
+  const canSendMail = integrationStatus('email') === 'configured';
+
   const user = await prisma.$transaction(async (tx) => {
     const createdUser = await tx.user.create({
       data: {
         email: input.email,
         passwordHash,
-        status: 'PENDING_VERIFICATION',
+        status: canSendMail ? 'PENDING_VERIFICATION' : 'ACTIVE',
+        emailVerifiedAt: canSendMail ? null : new Date(),
         profile: {
           create: {
             firstName: input.firstName,
@@ -107,21 +115,25 @@ export const POST = route(async (request: Request) => {
       ],
     });
 
-    await tx.verificationToken.create({
-      data: {
-        userId: createdUser.id,
-        purpose: 'email_verification',
-        tokenHash: hashToken(verificationToken),
-        expiresAt: new Date(Date.now() + 24 * 3600 * 1000),
-      },
-    });
+    if (canSendMail) {
+      await tx.verificationToken.create({
+        data: {
+          userId: createdUser.id,
+          purpose: 'email_verification',
+          tokenHash: hashToken(verificationToken),
+          expiresAt: new Date(Date.now() + 24 * 3600 * 1000),
+        },
+      });
+    }
 
     return createdUser;
   });
 
   const link = `${env.appUrl}/verify-email?token=${verificationToken}`;
-  const template = templates.verifyEmail(input.firstName, link);
-  await sendMail({ to: input.email, ...template });
+  if (canSendMail) {
+    const template = templates.verifyEmail(input.firstName, link);
+    await sendMail({ to: input.email, ...template });
+  }
 
   await writeAudit({
     actorId: user.id,
@@ -135,10 +147,14 @@ export const POST = route(async (request: Request) => {
   });
 
   return created({
-    message:
-      'Check your inbox. If we can create an account for this address, a confirmation link is on its way.',
+    // Both messages are deliberately the same shape: neither confirms whether
+    // an account already existed for this address.
+    message: canSendMail
+      ? 'Check your inbox. If we can create an account for this address, a confirmation link is on its way.'
+      : 'Your account is ready. You can sign in now.',
+    verificationRequired: canSendMail,
     // In development the verification link is returned so the flow can be
     // completed without a configured mail provider.
-    developmentVerificationLink: env.isProduction ? undefined : link,
+    developmentVerificationLink: canSendMail && !env.isProduction ? link : undefined,
   });
 });

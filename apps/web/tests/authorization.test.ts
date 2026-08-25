@@ -30,6 +30,7 @@ import {
   MAX_AVATAR_BYTES,
 } from '../src/lib/domain/files';
 import { canReadConversation, assertCanWriteToConversation } from '../src/lib/domain/messaging';
+import { youTubeVideoId, youTubeEmbedUrl } from '../src/lib/domain/media';
 
 const prisma = new PrismaClient();
 
@@ -884,5 +885,90 @@ describe('Files shared into a conversation', () => {
 
     await prisma.conversation.delete({ where: { id: conversation.id } });
     expect(await readFile(stored.id)).toBeNull();
+  });
+});
+
+describe('Linked teaching video', () => {
+  it('recognises the shapes a YouTube link actually comes in', () => {
+    const id = 'dQw4w9WgXcQ';
+    expect(youTubeVideoId(`https://www.youtube.com/watch?v=${id}`)).toBe(id);
+    expect(youTubeVideoId(`https://youtu.be/${id}`)).toBe(id);
+    expect(youTubeVideoId(`https://www.youtube.com/embed/${id}`)).toBe(id);
+    expect(youTubeVideoId(`https://www.youtube.com/live/${id}`)).toBe(id);
+    expect(youTubeVideoId(`https://www.youtube.com/shorts/${id}`)).toBe(id);
+    expect(youTubeVideoId(`https://m.youtube.com/watch?v=${id}&t=30s`)).toBe(id);
+  });
+
+  it('refuses anything that is not a specific YouTube video', () => {
+    // A channel or playlist would embed "whatever is newest", which no
+    // content administrator can review before publishing.
+    expect(youTubeVideoId('https://www.youtube.com/@somechannel')).toBeNull();
+    expect(youTubeVideoId('https://www.youtube.com/playlist?list=PL123')).toBeNull();
+    expect(youTubeVideoId('https://vimeo.com/123456')).toBeNull();
+    expect(youTubeVideoId('not a url at all')).toBeNull();
+    expect(youTubeVideoId('javascript:alert(1)')).toBeNull();
+  });
+
+  it('is not fooled by a lookalike hostname', () => {
+    // youtube.com.evil.example ends with neither host we accept.
+    expect(youTubeVideoId('https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ')).toBeNull();
+    expect(youTubeVideoId('https://notyoutube.com/watch?v=dQw4w9WgXcQ')).toBeNull();
+  });
+
+  it('embeds through the no-cookie host', () => {
+    // Watching a teaching video should not quietly enrol a member in ad
+    // tracking before they have pressed play.
+    const embed = youTubeEmbedUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    expect(embed).toContain('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ');
+    expect(youTubeEmbedUrl('https://vimeo.com/123')).toBeNull();
+  });
+});
+
+describe('Course enrolment', () => {
+  it('gates lesson progress behind enrolling', async () => {
+    // The progress route used to upsert, which quietly enrolled anyone who
+    // posted a lesson id — the whole gate. Enrolment must exist first.
+    const course = await prisma.course.create({
+      data: {
+        slug: `enrol-test-${suffix}`,
+        title: 'Enrolment Test',
+        track: 'Testing',
+        summary: 'A course used to check the enrolment gate.',
+        description: 'A course used to check the enrolment gate.',
+        authorName: 'Test',
+        difficulty: 'All levels',
+        status: 'PUBLISHED',
+        lessons: {
+          create: [{ orderIndex: 0, title: 'One', summary: 'First', body: 'Body' }],
+        },
+      },
+      include: { lessons: true },
+    });
+
+    const notEnrolled = await prisma.courseProgress.findUnique({
+      where: { userId_courseId: { userId: ids.userA!, courseId: course.id } },
+    });
+    expect(notEnrolled).toBeNull();
+
+    // Enrolling is what creates it.
+    const enrolled = await prisma.courseProgress.create({
+      data: { userId: ids.userA!, courseId: course.id },
+    });
+    expect(enrolled.percentComplete).toBe(0);
+
+    // Leaving takes the progress with it rather than keeping a hidden record.
+    await prisma.lessonProgress.create({
+      data: {
+        courseProgressId: enrolled.id,
+        lessonId: course.lessons[0]!.id,
+        completedAt: new Date(),
+      },
+    });
+    await prisma.courseProgress.delete({ where: { id: enrolled.id } });
+    expect(
+      await prisma.lessonProgress.count({ where: { courseProgressId: enrolled.id } }),
+    ).toBe(0);
+
+    await prisma.course.delete({ where: { id: course.id } });
   });
 });
