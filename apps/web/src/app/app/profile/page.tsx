@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { requirePageUser } from '@/lib/auth/guard';
 import { AppPageHeader } from '@/components/app/AppShell';
 import { ProfileForm, PrivacyForm } from '@/components/app/ProfileForm';
+import { AvatarUploader } from '@/components/app/AvatarUploader';
 import { Badge, Card } from '@/components/ui';
 import { ROLE_LABEL } from '@/lib/permissions';
 
@@ -51,6 +52,10 @@ export default async function ProfilePage() {
             {courseCount} course{courseCount === 1 ? '' : 's'} started
           </Badge>
         ) : null}
+      </div>
+
+      <div className="mb-8">
+        <AvatarUploader initialUrl={profile?.avatarUrl ?? null} />
       </div>
 
       <Card className="mb-8">

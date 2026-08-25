@@ -372,6 +372,7 @@ model User {
   auditEntries        AuditLog[]                @relation("AuditActor")
   securityEvents      SecurityEvent[]
   supportSessions     SupportModeSession[]      @relation("SupportSubject")
+  storedFiles         StoredFile[]              @relation("FileOwner")
 
   ministryCenterId String?         @db.Uuid
   ministryCenter   MinistryCenter? @relation("CenterMembers", fields: [ministryCenterId], references: [id], onDelete: SetNull)
@@ -713,6 +714,7 @@ model CounsellingSession {
 
   @@index([counsellorId, scheduledFor])
   @@index([status])
+  @@index([scheduledFor], map: "counselling_sessions_scheduled_idx")
   @@map("counselling_sessions")
 }
 
@@ -790,6 +792,9 @@ model ConnectionRequest {
 
   @@unique([requesterId, recipientId])
   @@index([recipientId, status])
+  // Declared here so Prisma stops treating this hand-written operational
+  // index as drift and proposing to drop it on the next migration.
+  @@index([requesterId, status], map: "connection_requests_requester_idx")
   @@map("connection_requests")
 }
 
@@ -845,6 +850,7 @@ model Message {
   reports Report[]
 
   @@index([conversationId, createdAt])
+  @@index([senderId, createdAt], map: "messages_sender_idx")
   @@map("messages")
 }
 
@@ -1352,4 +1358,34 @@ model RateLimitCounter {
 
   @@unique([bucket, identity])
   @@map("rate_limit_counters")
+}
+
+/// What a stored file is for. The purpose decides who may read it back, so a
+/// new purpose must come with a matching rule in the file-serving route rather
+/// than inheriting whatever the last one allowed.
+enum StoredFilePurpose {
+  AVATAR
+}
+
+/// Uploaded files, held in the database rather than an object store.
+///
+/// This keeps the platform free to run and private by construction: a file is
+/// only ever reachable through an authenticated route that applies the rule for
+/// its purpose, so there is no public bucket URL to leak or guess. The trade is
+/// size — the database is the wrong home for large media, so uploads are capped
+/// and only small images are accepted today. Moving to object storage later
+/// means changing lib/domain/files.ts, not every call site.
+model StoredFile {
+  id          String            @id @default(uuid()) @db.Uuid
+  ownerId     String?           @db.Uuid
+  owner       User?             @relation("FileOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  purpose     StoredFilePurpose
+  /// Never the client's declared type — set from the bytes themselves.
+  contentType String
+  byteSize    Int
+  data        Bytes
+  createdAt   DateTime          @default(now())
+
+  @@index([ownerId, purpose])
+  @@map("stored_files")
 }

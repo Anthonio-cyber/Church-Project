@@ -18,6 +18,7 @@ import { canMessage, guardConnectionRequest, searchDirectory, isBlockedBetween }
 import { triage } from '../src/lib/domain/safeguarding';
 import { waitingRoomState } from '../src/lib/domain/counselling';
 import { videoRoomName, videoRoomForSession } from '../src/lib/domain/video';
+import { sniffImageType, storeAvatar, readFile, MAX_AVATAR_BYTES } from '../src/lib/domain/files';
 
 const prisma = new PrismaClient();
 
@@ -674,5 +675,77 @@ describe('Voice and video rooms for counselling sessions', () => {
   it('offers no room at all when no video service is configured', () => {
     delete process.env.VIDEO_SERVICE_URL;
     expect(videoRoomForSession(sessionId, 'VIDEO')).toBeNull();
+  });
+});
+
+describe('Uploaded files', () => {
+  // Smallest valid images of each accepted kind, by signature.
+  const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex');
+  const JPEG = Buffer.from('ffd8ffe000104a464946', 'hex');
+  const WEBP = Buffer.from('524946461a000000574542505650', 'hex');
+
+  it('identifies the accepted image types from their bytes', () => {
+    expect(sniffImageType(PNG)).toBe('image/png');
+    expect(sniffImageType(JPEG)).toBe('image/jpeg');
+    expect(sniffImageType(WEBP)).toBe('image/webp');
+  });
+
+  it('refuses an SVG, however it is labelled', () => {
+    // An SVG can carry script. Served back from our own origin it would be
+    // stored XSS, so it must not pass the check even though it is "an image".
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script/></svg>');
+    expect(sniffImageType(svg)).toBeNull();
+  });
+
+  it('refuses a disguised executable', () => {
+    // An ELF binary renamed to .png and declared as image/png.
+    const elf = Buffer.from('7f454c4602010100', 'hex');
+    expect(sniffImageType(elf)).toBeNull();
+  });
+
+  it('stores an avatar and reads back the sniffed type, not a claimed one', async () => {
+    const stored = await storeAvatar(ids.userA!, PNG);
+    expect(stored.url).toBe(`/api/files/${stored.id}`);
+
+    const read = await readFile(stored.id);
+    expect(read).not.toBeNull();
+    expect(read!.contentType).toBe('image/png');
+    expect(read!.purpose).toBe('AVATAR');
+    expect(Buffer.from(read!.data).equals(PNG)).toBe(true);
+  });
+
+  it('replaces the previous avatar rather than accumulating them', async () => {
+    const first = await storeAvatar(ids.userB!, PNG);
+    const second = await storeAvatar(ids.userB!, JPEG);
+
+    expect(second.id).not.toBe(first.id);
+    // The old bytes are gone, not merely unreferenced.
+    expect(await readFile(first.id)).toBeNull();
+
+    const remaining = await prisma.storedFile.count({
+      where: { ownerId: ids.userB!, purpose: 'AVATAR' },
+    });
+    expect(remaining).toBe(1);
+  });
+
+  it('refuses a file over the size limit', async () => {
+    const huge = Buffer.concat([PNG, Buffer.alloc(MAX_AVATAR_BYTES + 1)]);
+    await expect(storeAvatar(ids.userA!, huge)).rejects.toThrow();
+  });
+
+  it('refuses an empty file', async () => {
+    await expect(storeAvatar(ids.userA!, Buffer.alloc(0))).rejects.toThrow();
+  });
+
+  it('erases a member’s files when their account is erased', async () => {
+    const user = await makeUser('fileowner', ['USER']);
+    const stored = await storeAvatar(user.id, PNG);
+    expect(await readFile(stored.id)).not.toBeNull();
+
+    await prisma.user.delete({ where: { id: user.id } });
+
+    // "Delete my account" must not leave the person's picture behind.
+    expect(await readFile(stored.id)).toBeNull();
+    delete ids.fileowner;
   });
 });

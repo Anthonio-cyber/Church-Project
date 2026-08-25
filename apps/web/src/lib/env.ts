@@ -63,7 +63,10 @@ export function integrationStatus(name: IntegrationName): 'configured' | 'not_co
     // have shown "configured" for a deployment where video does nothing.
     // Read at call time to match lib/domain/video.ts.
     video: process.env.VIDEO_SERVICE_URL || undefined,
-    storage: env.storageKey,
+    // File storage needs no key and no third-party account: uploads are held
+    // in the platform's own database and served through an authenticated
+    // route. It is available wherever the database is.
+    storage: 'database',
   };
   return map[name] ? 'configured' : 'not_configured';
 }
