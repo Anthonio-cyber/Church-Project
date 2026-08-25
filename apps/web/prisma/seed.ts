@@ -151,7 +151,11 @@ async function main() {
       },
       notificationPrefs: { create: {} },
     },
-    update: { passwordHash, status: 'ACTIVE' },
+    // Deliberately a no-op update: this seed is safe to re-run (every
+    // deploy runs it), and re-running it must never reset a password
+    // someone has since changed. The account is created once; after that,
+    // this upsert only confirms it still exists.
+    update: {},
   });
 
   const superAdminRole = await prisma.role.findUniqueOrThrow({
