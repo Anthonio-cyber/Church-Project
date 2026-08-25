@@ -1,0 +1,85 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# 𝒾Pastor — FREE hosting path.
+#
+# £0/month to start: a Render free web service plus a Neon free Postgres
+# database. Use this to get a real, shareable link today; move to render.yaml
+# (paid plan, a real custom domain) once real members are relying on it.
+#
+# Two honest limits of the free path, so nobody is surprised by them:
+#   - The free web service sleeps after ~15 minutes with no visitors. The
+#     next visit wakes it up, which takes roughly 30-50 seconds. Fine for a
+#     preview link you're sharing with a few people; not fine as the front
+#     door of a pastoral-care platform once people depend on it.
+#   - Render's OWN free Postgres expires and is deleted after 30 days. This
+#     blueprint does not create a database for that reason — it expects a
+#     Neon free Postgres project (no expiry, no card required) and asks for
+#     its connection string as DATABASE_URL.
+#
+# Deploying (see docs/RENDER-FREE.md for the full walkthrough):
+#   1. Create a free Neon Postgres project → copy its connection string.
+#   2. Render dashboard → New → Blueprint → this repository → point it at
+#      render-free.yaml (Render asks for the blueprint file path if it isn't
+#      the default render.yaml). If your account's Blueprint flow doesn't
+#      offer that, docs/RENDER-FREE.md has the equivalent manual steps.
+#   3. Paste the Neon connection string as DATABASE_URL when Render prompts.
+#   4. Your app goes live at https://<service-name>.onrender.com — Render
+#      assigns whatever exact subdomain is free. "ipastor" may already be
+#      taken by someone else's Render project; check the assigned URL after
+#      the first deploy and update NEXT_PUBLIC_APP_URL to match if so.
+#
+# This deploys from the working branch, not main, so it can go live today
+# without waiting on a merge. Point it at main once this branch is merged.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  - type: web
+    name: ipastor
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: frankfurt
+    branch: claude/keen-gauss-dkx2c6
+    healthCheckPath: /api/health
+    autoDeploy: true
+
+    envVars:
+      # No managed database on the free plan — paste your Neon connection
+      # string here (Neon dashboard → Connection string → include ?sslmode=require).
+      - key: DATABASE_URL
+        sync: false
+
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: DATA_ENCRYPTION_KEY
+        generateValue: true
+
+      # Best guess at the assigned *.onrender.com URL. Confirm after the
+      # first deploy and correct it if Render had to pick a different name.
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://ipastor.onrender.com
+
+      - key: NEXT_PUBLIC_BRAND_NAME
+        value: iPastor
+
+      - key: NODE_ENV
+        value: production
+
+      # Seed the demo accounts once, then set this back to false — see
+      # docs/RENDER-FREE.md. Left on, it re-runs (and fails) on every deploy.
+      - key: SEED_ON_START
+        value: 'false'
+
+      # Optional integrations, unset on the free path.
+      - key: EMAIL_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: iPastor <no-reply@ipastor.onrender.com>
+      - key: PUSH_NOTIFICATION_KEY
+        sync: false
+      - key: VIDEO_SERVICE_KEY
+        sync: false
+      - key: STORAGE_KEY
+        sync: false
+      - key: BACKUP_SCHEDULE
+        sync: false
