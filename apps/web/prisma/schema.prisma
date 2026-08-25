@@ -810,6 +810,7 @@ model Conversation {
 
   participants ConversationParticipant[]
   messages     Message[]
+  storedFiles  StoredFile[]
 
   @@index([kind])
   @@map("conversations")
@@ -1365,6 +1366,7 @@ model RateLimitCounter {
 /// than inheriting whatever the last one allowed.
 enum StoredFilePurpose {
   AVATAR
+  MESSAGE_ATTACHMENT
 }
 
 /// Uploaded files, held in the database rather than an object store.
@@ -1376,9 +1378,21 @@ enum StoredFilePurpose {
 /// and only small images are accepted today. Moving to object storage later
 /// means changing lib/domain/files.ts, not every call site.
 model StoredFile {
-  id          String            @id @default(uuid()) @db.Uuid
-  ownerId     String?           @db.Uuid
-  owner       User?             @relation("FileOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  id      String  @id @default(uuid()) @db.Uuid
+  ownerId String? @db.Uuid
+  owner   User?   @relation("FileOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  /// Set for MESSAGE_ATTACHMENT and nothing else. This is what the file-serving
+  /// route checks membership against, so an attachment is readable by exactly
+  /// the people who can read the conversation it was shared in — and it is why
+  /// the column exists rather than the rule being inferred from the message.
+  conversationId String?       @db.Uuid
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  /// The name the sender's file had, shown to the recipient. Sanitised before
+  /// it is echoed into a Content-Disposition header.
+  fileName String?
+
   purpose     StoredFilePurpose
   /// Never the client's declared type — set from the bytes themselves.
   contentType String
@@ -1387,5 +1401,6 @@ model StoredFile {
   createdAt   DateTime          @default(now())
 
   @@index([ownerId, purpose])
+  @@index([conversationId])
   @@map("stored_files")
 }

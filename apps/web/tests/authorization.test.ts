@@ -18,7 +18,18 @@ import { canMessage, guardConnectionRequest, searchDirectory, isBlockedBetween }
 import { triage } from '../src/lib/domain/safeguarding';
 import { waitingRoomState } from '../src/lib/domain/counselling';
 import { videoRoomName, videoRoomForSession } from '../src/lib/domain/video';
-import { sniffImageType, storeAvatar, readFile, MAX_AVATAR_BYTES } from '../src/lib/domain/files';
+import {
+  sniffImageType,
+  sniffAttachmentType,
+  storeAvatar,
+  storeAttachment,
+  readFile,
+  sanitiseFileName,
+  dispositionFor,
+  fileIdFromUrl,
+  MAX_AVATAR_BYTES,
+} from '../src/lib/domain/files';
+import { canReadConversation, assertCanWriteToConversation } from '../src/lib/domain/messaging';
 
 const prisma = new PrismaClient();
 
@@ -747,5 +758,131 @@ describe('Uploaded files', () => {
     // "Delete my account" must not leave the person's picture behind.
     expect(await readFile(stored.id)).toBeNull();
     delete ids.fileowner;
+  });
+});
+
+describe('Files shared into a conversation', () => {
+  const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex');
+  const PDF = Buffer.from('255044462d312e340a', 'hex');
+
+  let conversationId = '';
+  let outsiderId = '';
+
+  beforeAll(async () => {
+    const conversation = await prisma.conversation.create({
+      data: {
+        kind: 'PEER',
+        participants: { create: [{ userId: ids.userA! }, { userId: ids.userB! }] },
+      },
+    });
+    conversationId = conversation.id;
+    const outsider = await makeUser('outsider', ['USER']);
+    outsiderId = outsider.id;
+  });
+
+  it('accepts a PDF as an attachment, though never as an avatar', () => {
+    // A counsellee handing over a letter or a report is the ordinary case.
+    expect(sniffAttachmentType(PDF)).toBe('application/pdf');
+    expect(sniffImageType(PDF)).toBeNull();
+  });
+
+  it('serves a PDF as a download and an image in place', () => {
+    // The browser's own PDF viewer runs script that the page's CSP cannot
+    // reach, so member-supplied PDFs must never open in it.
+    expect(dispositionFor('application/pdf', 'report.pdf')).toBe(
+      'attachment; filename="report.pdf"',
+    );
+    expect(dispositionFor('image/png', 'photo.png')).toBe('inline; filename="photo.png"');
+  });
+
+  it('strips a filename that would break out of the header', () => {
+    expect(sanitiseFileName('../../etc/passwd')).toBe('passwd');
+    expect(sanitiseFileName('a"; attachment; filename="b')).toBe('a; attachment; filename=b');
+    expect(sanitiseFileName('bad\r\nX-Injected: 1')).toBe('badX-Injected: 1');
+    expect(sanitiseFileName('   ')).toBeNull();
+  });
+
+  it('reads back an attachment for a participant, and refuses an outsider', async () => {
+    const stored = await storeAttachment(ids.userA!, conversationId, PNG, 'photo.png');
+    const file = await readFile(stored.id);
+
+    expect(file!.purpose).toBe('MESSAGE_ATTACHMENT');
+    expect(file!.conversationId).toBe(conversationId);
+
+    // Both people in the conversation may read it.
+    expect(await canReadConversation(ids.userA!, conversationId)).toBe(true);
+    expect(await canReadConversation(ids.userB!, conversationId)).toBe(true);
+    // Someone who was never in it may not — this is the check the file route
+    // applies before serving a single byte.
+    expect(await canReadConversation(outsiderId, conversationId)).toBe(false);
+  });
+
+  it('refuses an upload into a conversation the sender is not part of', async () => {
+    await expect(
+      assertCanWriteToConversation(outsiderId, conversationId),
+    ).rejects.toThrow();
+  });
+
+  it('refuses an upload once the sender has left the conversation', async () => {
+    const leaver = await makeUser('leaver', ['USER']);
+    const conversation = await prisma.conversation.create({
+      data: {
+        kind: 'PEER',
+        participants: { create: [{ userId: leaver.id }, { userId: ids.userA! }] },
+      },
+    });
+
+    await expect(
+      assertCanWriteToConversation(leaver.id, conversation.id),
+    ).resolves.toBeTruthy();
+
+    await prisma.conversationParticipant.update({
+      where: { conversationId_userId: { conversationId: conversation.id, userId: leaver.id } },
+      data: { leftAt: new Date() },
+    });
+
+    await expect(
+      assertCanWriteToConversation(leaver.id, conversation.id),
+    ).rejects.toThrow();
+    // And they can no longer read what was shared there.
+    expect(await canReadConversation(leaver.id, conversation.id)).toBe(false);
+  });
+
+  it('refuses an upload into a closed conversation', async () => {
+    const conversation = await prisma.conversation.create({
+      data: {
+        kind: 'PEER',
+        isActive: false,
+        participants: { create: [{ userId: ids.userA! }, { userId: ids.userB! }] },
+      },
+    });
+    await expect(
+      assertCanWriteToConversation(ids.userA!, conversation.id),
+    ).rejects.toThrow();
+    // Reading back what was already shared stays possible, which is the same
+    // as being able to scroll through what was said.
+    expect(await canReadConversation(ids.userA!, conversation.id)).toBe(true);
+  });
+
+  it('recognises only our own file paths', () => {
+    const id = '11111111-2222-4333-8444-555555555555';
+    expect(fileIdFromUrl(`/api/files/${id}`)).toBe(id);
+    expect(fileIdFromUrl(`https://evil.example/api/files/${id}`)).toBeNull();
+    expect(fileIdFromUrl('/api/files/not-a-uuid')).toBeNull();
+    expect(fileIdFromUrl(`/api/files/${id}?x=1`)).toBeNull();
+  });
+
+  it('takes attachments with the conversation when it is erased', async () => {
+    const conversation = await prisma.conversation.create({
+      data: {
+        kind: 'PEER',
+        participants: { create: [{ userId: ids.userA! }, { userId: ids.userB! }] },
+      },
+    });
+    const stored = await storeAttachment(ids.userA!, conversation.id, PNG, 'x.png');
+    expect(await readFile(stored.id)).not.toBeNull();
+
+    await prisma.conversation.delete({ where: { id: conversation.id } });
+    expect(await readFile(stored.id)).toBeNull();
   });
 });

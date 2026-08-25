@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import { attachmentNamesFor } from '@/lib/domain/files';
 import { requirePageUser } from '@/lib/auth/guard';
 import { AppPageHeader } from '@/components/app/AppShell';
 import { ConversationView } from '@/components/app/ConversationView';
@@ -66,6 +67,10 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
     take: 200,
   });
 
+  const attachmentNames = await attachmentNamesFor(
+    messages.map((message) => message.attachmentUrl),
+  );
+
   return (
     <div className="mx-auto max-w-3xl">
       <AppPageHeader
@@ -85,6 +90,14 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
           createdAt: message.createdAt.toISOString(),
           isMine: message.senderId === context.user.id,
           deleted: Boolean(message.deletedAt),
+          // A removed message takes its attachment with it.
+          attachmentUrl: message.deletedAt ? null : message.attachmentUrl,
+          attachmentName: message.deletedAt
+            ? null
+            : (attachmentNames.get(message.attachmentUrl ?? '')?.fileName ?? null),
+          attachmentType: message.deletedAt
+            ? null
+            : (attachmentNames.get(message.attachmentUrl ?? '')?.contentType ?? null),
         }))}
       />
     </div>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { VideoCallPanel, type VideoRoomView } from './VideoCallPanel';
+import { MessageAttachment } from './MessageAttachment';
 
 export type SessionView = {
   id: string;
@@ -35,6 +36,9 @@ export type SessionMessage = {
   scriptureRef?: string | null;
   createdAt: string;
   isMine: boolean;
+  attachmentUrl?: string | null;
+  attachmentName?: string | null;
+  attachmentType?: string | null;
 };
 
 type Props = {
@@ -71,7 +75,14 @@ export function CounsellingSessionRoom({
   const [sending, setSending] = useState(false);
   const [joining, setJoining] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [pending, setPending] = useState<{
+    url: string;
+    fileName: string | null;
+    contentType: string;
+  } | null>(null);
+  const [attaching, setAttaching] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const inSession =
     state.waitingRoom.canEnterSession && state.status !== 'COMPLETED' && state.status !== 'CANCELLED';
@@ -166,25 +177,59 @@ export function CounsellingSessionRoom({
     router.refresh();
   }, [state.id, viewerRole, router]);
 
+  async function upload(file: File) {
+    if (!state.conversationId) return;
+    setAttaching(true);
+    setError(null);
+    const form = new FormData();
+    form.append('file', file);
+    form.append('conversationId', state.conversationId);
+
+    const response = await fetch('/api/files/attachment', { method: 'POST', body: form }).catch(
+      () => null,
+    );
+    const payload = await response?.json().catch(() => null);
+
+    if (!response?.ok) {
+      setError(payload?.error?.message ?? 'That file could not be attached.');
+      setAttaching(false);
+      return;
+    }
+
+    setPending({
+      url: payload.data.attachment.url,
+      fileName: payload.data.attachment.fileName,
+      contentType: payload.data.attachment.contentType,
+    });
+    setAttaching(false);
+  }
+
   async function send(event: React.FormEvent) {
     event.preventDefault();
-    if (!draft.trim() || !state.conversationId) return;
+    if ((!draft.trim() && !pending) || !state.conversationId) return;
 
     setSending(true);
     setError(null);
     const body = draft;
+    const attachment = pending;
     setDraft('');
+    setPending(null);
 
     const response = await fetch('/api/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conversationId: state.conversationId, body }),
+      body: JSON.stringify({
+        conversationId: state.conversationId,
+        body,
+        ...(attachment ? { attachmentUrl: attachment.url } : {}),
+      }),
     }).catch(() => null);
     const payload = await response?.json().catch(() => null);
 
     if (!response?.ok) {
       setError(payload?.error?.message ?? 'That message could not be sent.');
       setDraft(body);
+      setPending(attachment);
       setSending(false);
       return;
     }
@@ -192,7 +237,14 @@ export function CounsellingSessionRoom({
     setMessages((current) =>
       current.some((message) => message.id === payload.data.message.id)
         ? current
-        : [...current, { ...payload.data.message, senderId: viewerId }],
+        : [
+            ...current,
+            {
+              ...payload.data.message,
+              senderId: viewerId,
+              attachmentType: attachment?.contentType ?? null,
+            },
+          ],
     );
     setSending(false);
   }
@@ -475,7 +527,15 @@ export function CounsellingSessionRoom({
                     {message.scriptureRef ? (
                       <p className="mb-1 text-xs font-semibold opacity-80">{message.scriptureRef}</p>
                     ) : null}
-                    <p className="whitespace-pre-wrap">{message.body}</p>
+                    {message.body ? <p className="whitespace-pre-wrap">{message.body}</p> : null}
+                  {message.attachmentUrl ? (
+                    <MessageAttachment
+                      url={message.attachmentUrl}
+                      fileName={message.attachmentName ?? null}
+                      contentType={message.attachmentType ?? null}
+                      mine={message.isMine}
+                    />
+                  ) : null}
                     <p className="mt-1 text-[0.65rem] opacity-70">
                       {new Date(message.createdAt).toLocaleTimeString(undefined, {
                         hour: '2-digit',
@@ -494,7 +554,24 @@ export function CounsellingSessionRoom({
             </p>
           ) : null}
 
-          <form onSubmit={send} className="flex gap-3 border-t border-ink-200 p-4 dark:border-ink-800">
+          <form onSubmit={send} className="border-t border-ink-200 p-4 dark:border-ink-800">
+            {pending ? (
+              <div className="mb-3 flex items-center gap-3 rounded-lg border border-gold-300 bg-gold-50 px-3 py-2 text-sm dark:border-gold-800 dark:bg-gold-950/30">
+                <span aria-hidden>⎙</span>
+                <span className="min-w-0 flex-1 truncate">
+                  {pending.fileName ?? 'Attachment'} ready to send
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPending(null)}
+                  className="shrink-0 text-xs underline underline-offset-2"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : null}
+
+            <div className="flex gap-3">
             <label htmlFor="messageBody" className="sr-only">
               Your message
             </label>
@@ -513,13 +590,35 @@ export function CounsellingSessionRoom({
               maxLength={4000}
               className="input flex-1 resize-none"
             />
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,application/pdf"
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = '';
+                if (file) void upload(file);
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={attaching || sending}
+              title="Attach a file"
+              aria-label="Attach a file"
+              className="min-h-[2.75rem] shrink-0 self-end rounded-lg border border-ink-300 px-4 text-sm disabled:opacity-50 dark:border-ink-700"
+            >
+              {attaching ? '…' : '⎙'}
+            </button>
             <button
               type="submit"
-              disabled={sending || !draft.trim()}
+              disabled={sending || (!draft.trim() && !pending)}
               className="min-h-[2.75rem] shrink-0 self-end rounded-lg bg-gold-sheen px-5 text-sm font-semibold text-ink-950 disabled:opacity-50"
             >
               {sending ? 'Sending…' : 'Send'}
             </button>
+            </div>
           </form>
         </section>
       </div>

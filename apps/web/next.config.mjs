@@ -94,11 +94,13 @@ const nextConfig = {
         // and this is the second lock: whatever a file turns out to be, it
         // may not execute, load anything, or reach the network. Declared
         // after the general /api rule so it wins on the shared keys.
+        // Content-Disposition is deliberately absent: it is set per file by
+        // the route, because a PDF must download while an image renders, and a
+        // value set here would override that.
         source: '/api/files/:path*',
         headers: [
           { key: 'Content-Security-Policy', value: "default-src 'none'; sandbox" },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Content-Disposition', value: 'inline' },
         ],
       },
     ];

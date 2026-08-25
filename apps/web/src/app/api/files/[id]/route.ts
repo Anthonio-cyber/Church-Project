@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { route } from '@/lib/api';
 import { requireUser } from '@/lib/auth/context';
-import { readFile } from '@/lib/domain/files';
+import { dispositionFor, readFile } from '@/lib/domain/files';
+import { canReadConversation } from '@/lib/domain/messaging';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,7 @@ export const GET = route(
   async (_request: Request, { params }: { params: Promise<{ id: string }> }) => {
     // Throws unless there is a valid session. Signing in is the floor, not the
     // whole rule — the per-purpose check follows.
-    await requireUser();
+    const context = await requireUser();
 
     const parsed = paramsSchema.safeParse(await params);
     if (!parsed.success) {
@@ -38,6 +39,26 @@ export const GET = route(
         // member may therefore load one; the id is a UUID, so they cannot be
         // enumerated by anyone who has not been shown them.
         break;
+
+      case 'MESSAGE_ATTACHMENT': {
+        // Readable by exactly the people who can read the conversation it was
+        // shared in — no wider. Note this is the *read* rule, not the write
+        // rule: someone may still open a document from a pastoral session
+        // that has since ended, which is the same as being able to scroll
+        // back through what was said.
+        //
+        // Safeguarding staff are deliberately not admitted here. Their route
+        // into counselling records is the safeguarding portal, where access
+        // requires a written reason and is recorded; a plain file fetch would
+        // be neither.
+        if (!file.conversationId) {
+          return new Response('Not found', { status: 404 });
+        }
+        if (!(await canReadConversation(context.user.id, file.conversationId))) {
+          return new Response('Not found', { status: 404 });
+        }
+        break;
+      }
       default: {
         // A purpose with no rule is refused rather than served. This is the
         // branch that makes adding a purpose without a decision impossible.
@@ -57,6 +78,9 @@ export const GET = route(
         // type were somehow wrong, the browser must not go looking for a
         // better one.
         'X-Content-Type-Options': 'nosniff',
+        // Images render in place; a PDF downloads rather than opening in the
+        // browser's own viewer, which runs script this page's CSP cannot reach.
+        'Content-Disposition': dispositionFor(file.contentType, file.fileName),
         // Cache-Control and Content-Security-Policy are deliberately not set
         // here. next.config.mjs already sets both for this path — `no-store`
         // for every /api/ route, and a locked-down `default-src 'none';

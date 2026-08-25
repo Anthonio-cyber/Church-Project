@@ -8,6 +8,7 @@ import { PermissionDenied } from '@/components/ui';
 import { AuthError } from '@/lib/auth/context';
 import { assertSessionAccess, CATEGORY_LABEL, waitingRoomState } from '@/lib/domain/counselling';
 import { videoRoomForSession } from '@/lib/domain/video';
+import { attachmentNamesFor } from '@/lib/domain/files';
 
 export const metadata: Metadata = { title: 'Counselling session' };
 export const dynamic = 'force-dynamic';
@@ -59,6 +60,10 @@ export default async function CounsellorSessionPage({
       })
     : [];
 
+  const attachmentNames = await attachmentNamesFor(
+    messages.map((message) => message.attachmentUrl),
+  );
+
   return (
     <>
       <AppPageHeader
@@ -100,6 +105,9 @@ export default async function CounsellorSessionPage({
           scriptureRef: message.scriptureRef,
           createdAt: message.createdAt.toISOString(),
           isMine: message.senderId === context.user.id,
+          attachmentUrl: message.attachmentUrl,
+          attachmentName: attachmentNames.get(message.attachmentUrl ?? '')?.fileName ?? null,
+          attachmentType: attachmentNames.get(message.attachmentUrl ?? '')?.contentType ?? null,
         }))}
       />
     </>
