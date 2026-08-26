@@ -37,11 +37,7 @@ export function RegisterForm() {
   });
   const [error, setError] = useState<string | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
-  const [done, setDone] = useState<{
-    message: string;
-    link?: string;
-    verificationRequired: boolean;
-  } | null>(null);
+  const [done, setDone] = useState<{ message: string } | null>(null);
   const [pending, setPending] = useState(false);
 
   const passwordChecks = useMemo(
@@ -85,8 +81,6 @@ export function RegisterForm() {
 
       setDone({
         message: payload.data.message,
-        link: payload.data.developmentVerificationLink,
-        verificationRequired: Boolean(payload.data.verificationRequired),
       });
     } catch {
       setError('We could not reach the server. Check your connection and try again.');
@@ -98,30 +92,15 @@ export function RegisterForm() {
     return (
       <div className="space-y-4 text-center">
         <p aria-hidden className="text-4xl">
-          {done.verificationRequired ? '✉️' : '✓'}
+          ✓
         </p>
-        <h2 className="font-serif text-xl font-semibold">
-          {done.verificationRequired ? 'Check your inbox' : 'Welcome'}
-        </h2>
+        <h2 className="font-serif text-xl font-semibold">Welcome</h2>
         <p className="text-sm leading-relaxed text-parchment-300">{done.message}</p>
-        {done.link ? (
-          <p className="rounded-lg border border-gold-800 bg-gold-950/40 p-4 text-left text-xs text-gold-200">
-            <strong className="block">Development mode</strong>
-            No email provider is configured, so the confirmation link is shown here:{' '}
-            <a href={done.link} className="break-all underline">
-              {done.link}
-            </a>
-          </p>
-        ) : null}
         <Link
           href="/login"
-          className={
-            done.verificationRequired
-              ? 'inline-block text-sm text-gold-400 underline underline-offset-4'
-              : 'inline-block min-h-[2.75rem] rounded-lg bg-gold-sheen px-6 py-2.5 text-sm font-semibold text-ink-950'
-          }
+          className="inline-block min-h-[2.75rem] rounded-lg bg-gold-sheen px-6 py-2.5 text-sm font-semibold text-ink-950"
         >
-          {done.verificationRequired ? 'Back to sign in' : 'Sign in'}
+          Sign in
         </Link>
       </div>
     );

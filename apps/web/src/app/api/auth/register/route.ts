@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/db';
-import { env, integrationStatus } from '@/lib/env';
 import {
   assertSameOrigin,
   clientIdentity,
@@ -10,13 +9,15 @@ import {
   ApiError,
 } from '@/lib/api';
 import { registerSchema } from '@/lib/validation';
-import { assessPasswordStrength, generateToken, hashPassword, hashToken } from '@/lib/crypto';
+import { assessPasswordStrength, hashPassword } from '@/lib/crypto';
 import { AUDIT, writeAudit } from '@/lib/audit';
 import { assertFeatureEnabled } from '@/lib/domain/settings';
-import { sendMail, templates } from '@/lib/mail';
 import { requestMeta } from '@/lib/auth/context';
 
 export const dynamic = 'force-dynamic';
+
+/** Said in both cases, so the two are indistinguishable. */
+const ACCOUNT_READY = 'Your account is ready. You can sign in now.';
 
 /** Members under 18 receive the protected age band and its restrictions. */
 function ageBandFor(dateOfBirth: Date | null): 'MINOR' | 'YOUNG_ADULT' | 'ADULT' | 'UNDECLARED' {
@@ -43,42 +44,38 @@ export const POST = route(async (request: Request) => {
   const meta = await requestMeta();
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
 
-  // Account enumeration defence: the response is identical whether or not the
-  // address is already registered. An existing account is told by email.
+  // Account enumeration defence: the response is word for word the same
+  // whether or not this address is already registered. On a platform where
+  // having an account at all is sensitive, "that address is taken" is itself
+  // something worth learning about someone.
+  //
+  // The wording below is true either way — a person who already has an
+  // account can indeed sign in now, with the password they originally chose.
   if (existing) {
-    await sendMail({
-      to: input.email,
-      subject: 'Someone tried to register with your email address',
-      text:
-        'An account already exists for this email address. If this was you, ' +
-        'please sign in or reset your password instead.',
-    });
-    return created({
-      message:
-        'Check your inbox. If we can create an account for this address, a confirmation link is on its way.',
-    });
+    return created({ message: ACCOUNT_READY });
   }
 
   const dateOfBirth =
     input.dateOfBirth && input.dateOfBirth.length > 0 ? new Date(input.dateOfBirth) : null;
 
   const passwordHash = await hashPassword(input.password);
-  const verificationToken = generateToken(32);
 
-  // Whether a new account must confirm its address follows whether this
-  // deployment can actually send that confirmation. With no mail provider
-  // configured, requiring verification would leave every new member stranded
-  // at a message about an email that was never sent. When a provider is
-  // configured the gate returns on its own — nothing here needs changing.
-  const canSendMail = integrationStatus('email') === 'configured';
+  // Creating an account does not involve email at all.
+  //
+  // An address is still what someone signs in with, but nothing is sent to it
+  // and nothing waits on it: the account is usable the moment it is made.
+  // Confirming an address is a real protection when the mail actually
+  // arrives; when it does not, it is only a locked door with no key, and a
+  // member who cannot reach their own account is worse than an unconfirmed
+  // one. Password reset — the other thing email is for — is unaffected.
 
   const user = await prisma.$transaction(async (tx) => {
     const createdUser = await tx.user.create({
       data: {
         email: input.email,
         passwordHash,
-        status: canSendMail ? 'PENDING_VERIFICATION' : 'ACTIVE',
-        emailVerifiedAt: canSendMail ? null : new Date(),
+        status: 'ACTIVE',
+        emailVerifiedAt: new Date(),
         profile: {
           create: {
             firstName: input.firstName,
@@ -115,25 +112,10 @@ export const POST = route(async (request: Request) => {
       ],
     });
 
-    if (canSendMail) {
-      await tx.verificationToken.create({
-        data: {
-          userId: createdUser.id,
-          purpose: 'email_verification',
-          tokenHash: hashToken(verificationToken),
-          expiresAt: new Date(Date.now() + 24 * 3600 * 1000),
-        },
-      });
-    }
 
     return createdUser;
   });
 
-  const link = `${env.appUrl}/verify-email?token=${verificationToken}`;
-  if (canSendMail) {
-    const template = templates.verifyEmail(input.firstName, link);
-    await sendMail({ to: input.email, ...template });
-  }
 
   await writeAudit({
     actorId: user.id,
@@ -146,15 +128,5 @@ export const POST = route(async (request: Request) => {
     userAgent: meta.userAgent,
   });
 
-  return created({
-    // Both messages are deliberately the same shape: neither confirms whether
-    // an account already existed for this address.
-    message: canSendMail
-      ? 'Check your inbox. If we can create an account for this address, a confirmation link is on its way.'
-      : 'Your account is ready. You can sign in now.',
-    verificationRequired: canSendMail,
-    // In development the verification link is returned so the flow can be
-    // completed without a configured mail provider.
-    developmentVerificationLink: canSendMail && !env.isProduction ? link : undefined,
-  });
+  return created({ message: ACCOUNT_READY });
 });

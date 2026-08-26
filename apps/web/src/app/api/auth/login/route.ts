@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/db';
-import { integrationStatus } from '@/lib/env';
 import {
   ApiError,
   assertSameOrigin,
@@ -112,17 +111,9 @@ export const POST = route(async (request: Request) => {
     throw new ApiError(403, 'account_unavailable', 'This account is no longer active.');
   }
   if (user.status === 'PENDING_VERIFICATION') {
-    // With no mail provider configured, the confirmation link this message
-    // points at was never sent and never can be — so refusing here would lock
-    // someone out of their own account permanently over an email that does
-    // not exist. Accounts left stranded that way are released on sign-in.
-    if (integrationStatus('email') === 'configured') {
-      throw new ApiError(
-        403,
-        'email_unverified',
-        'Please confirm your email address using the link we sent you.',
-      );
-    }
+    // Signing in no longer waits on a confirmed address, so an account left
+    // in this state by an older sign-up is released here rather than being
+    // held behind a link that was never sent.
     await prisma.user.update({
       where: { id: user.id },
       data: { status: 'ACTIVE', emailVerifiedAt: new Date() },
