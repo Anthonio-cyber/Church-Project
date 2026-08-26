@@ -8,11 +8,16 @@
     },
     "preview": {
       "distribution": "internal",
-      "env": { "EXPO_PUBLIC_API_URL": "https://staging.ipastor.church" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://REPLACE-WITH-YOUR-LIVE-URL" }
     },
     "production": {
       "autoIncrement": true,
-      "env": { "EXPO_PUBLIC_API_URL": "https://ipastor.church" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://REPLACE-WITH-YOUR-LIVE-URL" }
+    },
+    "apk": {
+      "autoIncrement": true,
+      "android": { "buildType": "apk" },
+      "env": { "EXPO_PUBLIC_API_URL": "https://REPLACE-WITH-YOUR-LIVE-URL" }
     }
   },
   "submit": {

@@ -52,6 +52,7 @@ const FOOTER_SECTIONS = [
     title: 'Get in touch',
     links: [
       { href: '/contact', label: 'Contact' },
+      { href: '/download', label: 'Get the app' },
       { href: '/register', label: 'Create an account' },
       { href: '/login', label: 'Sign in' },
       { href: '/app/help', label: 'Help and support' },

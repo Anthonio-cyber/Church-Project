@@ -49,27 +49,44 @@ Set `PUSH_NOTIFICATION_KEY` on the server to enable delivery. Without it the
 server logs pushes and reports `not_configured` in the admin system monitor
 rather than pretending they were delivered.
 
-## Building for the stores
+## Pointing it at your server
+
+`EXPO_PUBLIC_API_URL` in `eas.json` is the only thing binding a build to your
+database. Set it, per profile, to exactly the value of `NEXT_PUBLIC_APP_URL`
+on the server. The app never holds a database connection string: it signs in
+over the same API the website uses and gets the same session token.
+
+`npm run build:android`, `npm run build:ios` and `npm run build:apk` all run
+`scripts/check-api-url.mjs` first, which stops the build if the profile still
+carries the placeholder or is not HTTPS. A build pointed at nothing installs
+perfectly and then fails to sign anyone in, which looks like a broken account
+rather than a broken build — so it is caught before the build, not after.
+
+## Building
 
 ```bash
-npx eas build --platform android --profile production
-npx eas build --platform ios --profile production
+npm run build:apk       # a sideloadable .apk to host or send directly
+npm run build:android   # an .aab for Google Play
+npm run build:ios       # for the App Store
 ```
 
-Before submitting:
+Before submitting to a store:
 
-1. Set a real `projectId` in `app.json` under `extra.eas`.
+1. Set a real `projectId` in `app.json` under `extra.eas` — `npx eas
+   build:configure` writes one for you.
 2. Confirm `ios.bundleIdentifier` and `android.package` (`church.ipastor.app`)
    match the identifiers registered in App Store Connect and Play Console.
-   These follow reverse-DNS from the domain — `ipastor.church` becomes
-   `church.ipastor.app`. A bundle identifier cannot be changed after the first
-   store submission, so settle it now.
-3. Set the production `EXPO_PUBLIC_API_URL` in `eas.json` to the deployed domain.
+   A bundle identifier cannot be changed after the first store submission, so
+   settle it now.
+3. Set `EXPO_PUBLIC_API_URL` as above.
 4. Replace `assets/icon.png`, `assets/adaptive-icon.png` and `assets/splash.png`
    if the organisation supplies authorised official artwork.
 5. Complete the store privacy declarations. Both stores require an account
    deletion route: the platform provides one in the Privacy Centre, and the
    public URL is `/data-rights`.
+
+See [`../../docs/MOBILE-APP.md`](../../docs/MOBILE-APP.md) for the costs and
+the tradeoffs between browser install, a direct APK and Google Play.
 
 ## Store metadata
 
@@ -89,9 +106,9 @@ Internal counselling notes are encrypted, and every access to them is recorded.
 iPastor is not an emergency service and is not a substitute for emergency,
 medical, psychological, psychiatric or legal care.
 
-**Privacy policy URL.** `https://ipastor.church/privacy`
-**Support URL.** `https://ipastor.church/contact`
-**Account deletion URL.** `https://ipastor.church/data-rights`
+**Privacy policy URL.** `<your live URL>/privacy`
+**Support URL.** `<your live URL>/contact`
+**Account deletion URL.** `<your live URL>/data-rights`
 
 **Age rating.** 12+ / PEGI 12 — the platform supports accounts for people under
 18 with age-aware restrictions applied automatically.

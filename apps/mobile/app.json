@@ -47,7 +47,6 @@
       ["expo-notifications", { "icon": "./assets/adaptive-icon.png", "color": "#c9922a" }]
     ],
     "extra": {
-      "apiUrl": "https://ipastor.church",
       "eas": { "projectId": "00000000-0000-0000-0000-000000000000" }
     },
     "privacy": "public"

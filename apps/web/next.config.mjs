@@ -30,6 +30,11 @@ const csp = [
   // youtube-nocookie.com carries linked teaching video; see lib/domain/media.ts.
   `frame-src 'self' https://www.youtube-nocookie.com${videoOrigin ? ` ${videoOrigin}` : ''}`,
   "frame-ancestors 'none'",
+  // The service worker and manifest are what make iPastor installable as an
+  // app. Both would fall back to default-src today, but naming them means a
+  // future change to default-src cannot quietly break installing.
+  "worker-src 'self'",
+  "manifest-src 'self'",
   "form-action 'self'",
   "base-uri 'self'",
   "object-src 'none'",

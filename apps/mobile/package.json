@@ -9,11 +9,12 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "prebuild": "expo prebuild",
-    "build:android": "eas build --platform android --profile production",
-    "build:ios": "eas build --platform ios --profile production",
+    "build:android": "node scripts/check-api-url.mjs production && eas build --platform android --profile production",
+    "build:ios": "node scripts/check-api-url.mjs production && eas build --platform ios --profile production",
     "submit:android": "eas submit --platform android",
     "submit:ios": "eas submit --platform ios",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:apk": "node scripts/check-api-url.mjs apk && eas build --platform android --profile apk"
   },
   "dependencies": {
     "expo": "~52.0.0",
