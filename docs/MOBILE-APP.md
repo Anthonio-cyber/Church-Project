@@ -52,10 +52,10 @@ npx eas build:configure       # writes a real projectId into app.json
 npm run build:apk
 ```
 
-`build:apk` refuses to start until `EXPO_PUBLIC_API_URL` in `eas.json` points
-at your live site rather than the placeholder — that URL is the only thing
-connecting the app to your database, and a wrong one produces an app that
-installs perfectly and then cannot sign anyone in.
+`build:apk` checks `EXPO_PUBLIC_API_URL` in `eas.json` before it starts — it is
+set to `https://rcnipastor.com`, and that URL is the only thing connecting the
+app to your database. A wrong one produces an app that installs perfectly and
+then cannot sign anyone in.
 
 EAS builds on Expo's free tier, on a shared queue. When it finishes you get a
 download link; put that `.apk` file somewhere people can reach it.
@@ -109,13 +109,14 @@ browser.
 ```json
 "production": {
   "autoIncrement": true,
-  "env": { "EXPO_PUBLIC_API_URL": "https://your-live-url" }
+  "env": { "EXPO_PUBLIC_API_URL": "https://rcnipastor.com" }
 }
 ```
 
-Set it in the `production`, `preview` and `apk` profiles. `npm run build:apk`
-and `npm run build:android` both check it first and stop with an explanation
-rather than shipping a build pointed at nothing.
+It is already set, in the `production`, `preview` and `apk` profiles. If the
+domain ever changes, change it in all three: `npm run build:apk` and `npm run
+build:android` check it first and stop with an explanation rather than shipping
+a build pointed at nothing.
 
 You do **not** give the mobile app a database connection string. It never
 touches the database directly; it signs in over the same API the website uses,

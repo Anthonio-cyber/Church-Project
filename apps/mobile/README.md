@@ -106,9 +106,9 @@ Internal counselling notes are encrypted, and every access to them is recorded.
 iPastor is not an emergency service and is not a substitute for emergency,
 medical, psychological, psychiatric or legal care.
 
-**Privacy policy URL.** `<your live URL>/privacy`
-**Support URL.** `<your live URL>/contact`
-**Account deletion URL.** `<your live URL>/data-rights`
+**Privacy policy URL.** `https://rcnipastor.com/privacy`
+**Support URL.** `https://rcnipastor.com/contact`
+**Account deletion URL.** `https://rcnipastor.com/data-rights`
 
 **Age rating.** 12+ / PEGI 12 — the platform supports accounts for people under
 18 with age-aware restrictions applied automatically.

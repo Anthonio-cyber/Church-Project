@@ -25,6 +25,9 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     siteName: brandName,
+    // Named explicitly so a link shared onward carries the canonical address
+    // rather than whatever URL it happened to be copied from.
+    url: appUrl,
     title: `${brandName} — Pastoral Counselling, Prayer and Discipleship`,
     description:
       'Request pastoral counselling, submit prayer requests, and grow in the Word — in a safe, consent-based digital ministry environment.',

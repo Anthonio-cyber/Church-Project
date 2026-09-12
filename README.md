@@ -219,9 +219,10 @@ The short version, for any host:
 
 | Document | For |
 |---|---|
-| [docs/RENDER.md](docs/RENDER.md) | **Step-by-step deployment to Render at ipastor.church** |
+| [docs/RENDER.md](docs/RENDER.md) | **Step-by-step deployment to Render at rcnipastor.com** |
 | [docs/RENDER-FREE.md](docs/RENDER-FREE.md) | Free deployment to Render + Neon, no domain required |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Choosing a host, domains, backups, going live |
+| [docs/DOMAIN.md](docs/DOMAIN.md) | **Buying rcnipastor.com and pointing the platform at it** |
 | [docs/MOBILE-APP.md](docs/MOBILE-APP.md) | Getting iPastor onto phones: browser install, APK, Google Play |
 | [docs/SECURITY.md](docs/SECURITY.md) | The security model in full |
 | [docs/SUPER-ADMIN.md](docs/SUPER-ADMIN.md) | The Setman: hierarchy, appointments, emergency controls |

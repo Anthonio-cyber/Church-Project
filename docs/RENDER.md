@@ -1,4 +1,4 @@
-# Deploying 𝒾Pastor to Render at ipastor.church
+# Deploying 𝒾Pastor to Render at rcnipastor.com
 
 A step-by-step walkthrough. Allow about 40 minutes, most of it waiting for the
 first build and for DNS.
@@ -9,7 +9,7 @@ first build and for DNS.
 
 You need three things:
 
-1. **The domain `ipastor.church`**, registered and with access to its DNS
+1. **The domain `rcnipastor.com`**, registered and with access to its DNS
    settings. It was unregistered when this was written — register it before you
    start, at Namecheap, Porkbun, Cloudflare Registrar or any registrar that
    sells `.church` (roughly £25–35 a year; it is a sponsored TLD, so it costs
@@ -76,13 +76,13 @@ If `status` is `degraded`, the database is not reachable — check the
 
 ---
 
-## Step 3 — Point ipastor.church at it
+## Step 3 — Point rcnipastor.com at it
 
 **In Render:** service → **Settings** → **Custom Domains** → **Add Custom
 Domain**. Add both:
 
-- `ipastor.church`
-- `www.ipastor.church`
+- `rcnipastor.com`
+- `www.rcnipastor.com`
 
 Render then shows the DNS records it wants. They look like this:
 
@@ -97,9 +97,9 @@ Render then shows the DNS records it wants. They look like this:
 each record.
 
 The one mistake almost everyone makes: in the **Host** or **Name** field, enter
-only `@` or `www` — *not* `ipastor.church` or `www.ipastor.church`. The registrar
+only `@` or `www` — *not* `rcnipastor.com` or `www.rcnipastor.com`. The registrar
 appends your domain automatically, so typing the full name gives you
-`www.ipastor.church.ipastor.church`.
+`www.rcnipastor.com.rcnipastor.com`.
 
 If your registrar does not support `A` records at the apex, use Cloudflare DNS
 (free) which supports `CNAME` flattening, or point the apex at `www` with a
@@ -115,7 +115,7 @@ green tick per domain once it verifies and issues the TLS certificate.
 Once the domain is live: **Environment** → confirm
 
 ```
-NEXT_PUBLIC_APP_URL = https://ipastor.church
+NEXT_PUBLIC_APP_URL = https://rcnipastor.com
 ```
 
 `render.yaml` already sets this, but check it matches exactly — no trailing
@@ -144,7 +144,7 @@ cd /app/apps/web && npx tsx prisma/seed.ts
 
 By default this creates `tony@rcnglobal.com` / `Tony1234` — override before
 deploying by setting `SEED_SUPER_ADMIN_EMAIL` and `SEED_SUPER_ADMIN_PASSWORD`
-in **Environment**. Either way, sign in at `https://ipastor.church/login` and
+in **Environment**. Either way, sign in at `https://rcnipastor.com/login` and
 **immediately** change the password and enrol multi-factor authentication —
 see Step 7.
 
@@ -156,11 +156,11 @@ Nothing else can complete account verification, so do this before launch.
 
 1. Create a [Resend](https://resend.com) account (or any provider — the adapter
    is provider-agnostic).
-2. Verify `ipastor.church` as a sending domain. The provider gives you SPF, DKIM
+2. Verify `rcnipastor.com` as a sending domain. The provider gives you SPF, DKIM
    and DMARC records — **TXT records**, added at your registrar exactly like
    Step 3.
 3. In Render: **Environment** → set `EMAIL_API_KEY`, and confirm
-   `EMAIL_FROM = iPastor <no-reply@ipastor.church>`.
+   `EMAIL_FROM = iPastor <no-reply@rcnipastor.com>`.
 4. Register a test account and confirm the email arrives.
 
 ---
@@ -194,7 +194,7 @@ backups as configured.
 
 ## Step 9 — The mobile apps
 
-`apps/mobile` is already pointed at `https://ipastor.church`. When you are ready:
+`apps/mobile` is already pointed at `https://rcnipastor.com`. When you are ready:
 
 ```bash
 cd apps/mobile
