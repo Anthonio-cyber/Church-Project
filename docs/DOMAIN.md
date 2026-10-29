@@ -121,3 +121,71 @@ it, so the two-factor switch is the highest-value minute you will spend.
 
 **The old Vercel URL** keeps working. Nothing breaks by adding a domain; the
 `*.vercel.app` address stays valid as a fallback.
+
+---
+
+## Making more links, later
+
+A web address is read **right to left**, and each part costs something
+different:
+
+```
+          ipastor  .  rcnipastor  .  com
+             │            │            │
+             │            │            └── the ending. Owned by a registry.
+             │            │                You cannot invent one. Existing
+             │            │                endings only: .com, .org, .church,
+             │            │                .ng, and about 1,500 others.
+             │            │
+             │            └── the name. You RENT this, yearly, from a
+             │                registrar. $11.25/year. This is the only
+             │                part anyone charges for.
+             │
+             └── a subdomain. FREE, instant, and unlimited. Once the
+                 middle part is yours, you mint as many of these as you
+                 like without paying anyone again.
+```
+
+So once `rcnipastor.com` is bought, every one of these is free and yours:
+
+| Link | What it might be |
+| --- | --- |
+| `give.rcnipastor.com` | Giving and offerings |
+| `watch.rcnipastor.com` | Services and teaching video |
+| `events.rcnipastor.com` | A standalone events page |
+| `app.rcnipastor.com` | The platform itself, if you ever split it off |
+| `staging.rcnipastor.com` | A test copy, safe to break |
+
+### How to add one
+
+1. Vercel → the project → **Settings → Domains → Add** → type the full
+   subdomain, e.g. `give.rcnipastor.com`.
+2. If the domain was bought through Vercel, the DNS record is written for you
+   and there is nothing else to do.
+3. If it was bought elsewhere, Vercel shows one record to add at the registrar:
+   a `CNAME` on the subdomain's name, pointing at the value Vercel gives.
+4. The certificate issues automatically, usually within a minute.
+
+Subdomains can point at completely different services — one at this platform,
+another at a video host, another at a giving provider. They share nothing but
+the name.
+
+### Pointing a subdomain of a domain you already own
+
+The same applies in reverse. If the ministry controls `rcnglobal.com`, then
+`ipastor.rcnglobal.com` can be added to this project for free: add it in
+Vercel, then whoever manages `rcnglobal.com`'s DNS adds the single `CNAME`
+record Vercel displays.
+
+Worth weighing before relying on it: an address under a domain someone else
+renews is an address you can lose without warning. Keeping `rcnipastor.com` as
+the canonical address and pointing `ipastor.rcnglobal.com` at it gives you the
+familiar name without that exposure.
+
+### Making your own ending (`.rcn`)
+
+Possible, but not realistically: an ICANN application for a new top-level
+domain costs roughly **$185,000**, plus around **$25,000 a year** to operate,
+and applications only open in occasional rounds. This is how `.google` and
+`.bmw` exist. It is not a route for a ministry platform — a subdomain gives you
+the same visual effect for nothing.
